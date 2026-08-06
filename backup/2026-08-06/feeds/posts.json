@@ -1,0 +1,199 @@
+{
+  "version": "1.0",
+  "encoding": "UTF-8",
+  "feed": {
+    "xmlns": "http://www.w3.org/2005/Atom",
+    "xmlns$openSearch": "http://a9.com/-/spec/opensearchrss/1.0/",
+    "xmlns$blogger": "http://schemas.google.com/blogger/2008",
+    "xmlns$georss": "http://www.georss.org/georss",
+    "xmlns$gd": "http://schemas.google.com/g/2005",
+    "xmlns$thr": "http://purl.org/syndication/thread/1.0",
+    "id": {
+      "$t": "tag:blogger.com,1999:blog-6925527308405412397"
+    },
+    "updated": {
+      "$t": "2026-08-06T16:09:37.672-03:00"
+    },
+    "category": [
+      {
+        "term": "Android"
+      },
+      {
+        "term": "Código Abierto"
+      },
+      {
+        "term": "Godot"
+      },
+      {
+        "term": "Plan Ceibal"
+      },
+      {
+        "term": "Retro"
+      },
+      {
+        "term": "TumbleBoy"
+      }
+    ],
+    "title": {
+      "type": "text",
+      "$t": "XO GALAXY"
+    },
+    "subtitle": {
+      "type": "html",
+      "$t": ""
+    },
+    "link": [
+      {
+        "rel": "http://schemas.google.com/g/2005#feed",
+        "type": "application/atom+xml",
+        "href": "https://xogalax.blogspot.com/feeds/posts/default"
+      },
+      {
+        "rel": "self",
+        "type": "application/atom+xml",
+        "href": "https://www.blogger.com/feeds/6925527308405412397/posts/default?alt=json&max-results=500"
+      },
+      {
+        "rel": "alternate",
+        "type": "text/html",
+        "href": "https://xogalax.blogspot.com/"
+      },
+      {
+        "rel": "hub",
+        "href": "http://pubsubhubbub.appspot.com/"
+      }
+    ],
+    "author": [
+      {
+        "name": {
+          "$t": "Aleperix"
+        },
+        "uri": {
+          "$t": "http://www.blogger.com/profile/09031276871035412926"
+        },
+        "email": {
+          "$t": "noreply@blogger.com"
+        },
+        "gd$image": {
+          "rel": "http://schemas.google.com/g/2005#thumbnail",
+          "width": "16",
+          "height": "16",
+          "src": "https://img1.blogblog.com/img/b16-rounded.gif"
+        }
+      }
+    ],
+    "generator": {
+      "version": "7.00",
+      "uri": "http://www.blogger.com",
+      "$t": "Blogger"
+    },
+    "openSearch$totalResults": {
+      "$t": "1"
+    },
+    "openSearch$startIndex": {
+      "$t": "1"
+    },
+    "openSearch$itemsPerPage": {
+      "$t": "500"
+    },
+    "entry": [
+      {
+        "id": {
+          "$t": "tag:blogger.com,1999:blog-6925527308405412397.post-6641116164386469933"
+        },
+        "published": {
+          "$t": "2026-08-05T15:58:35.765-03:00"
+        },
+        "updated": {
+          "$t": "2026-08-05T16:11:18.451-03:00"
+        },
+        "category": [
+          {
+            "scheme": "http://www.blogger.com/atom/ns#",
+            "term": "Android"
+          },
+          {
+            "scheme": "http://www.blogger.com/atom/ns#",
+            "term": "Código Abierto"
+          },
+          {
+            "scheme": "http://www.blogger.com/atom/ns#",
+            "term": "Godot"
+          },
+          {
+            "scheme": "http://www.blogger.com/atom/ns#",
+            "term": "Plan Ceibal"
+          },
+          {
+            "scheme": "http://www.blogger.com/atom/ns#",
+            "term": "Retro"
+          },
+          {
+            "scheme": "http://www.blogger.com/atom/ns#",
+            "term": "TumbleBoy"
+          }
+        ],
+        "title": {
+          "type": "text",
+          "$t": "TumbleBoy Reborn en XO Galaxy"
+        },
+        "content": {
+          "type": "html",
+          "$t": "<div class=\"tbr-post\">\n\n  <style>\n    .tbr-post{max-width:100%;font-family:var(--font-body,\"Inter\"),sans-serif;color:var(--ink,#e9eff6);font-size:15px;line-height:1.75}\n    .tbr-post *{box-sizing:border-box}\n    .tbr-post a{color:var(--signal,#a8ff60);text-decoration:none}\n    .tbr-post a:hover{text-decoration:underline}\n    .tbr-post code{font-family:var(--font-data,\"JetBrains Mono\"),monospace;font-size:13px;background:var(--panel-2,#0b121c);border:1px solid var(--line,#1d2a3b);border-radius:4px;padding:1px 5px}\n    .tbr-post pre{font-family:var(--font-data,\"JetBrains Mono\"),monospace;font-size:13px;background:var(--panel-2,#0b121c);border:1px solid var(--line,#1d2a3b);border-radius:var(--radius,12px);padding:14px 16px;overflow-x:auto}\n    .tbr-post h2,.tbr-post h3,.tbr-post h4{font-family:var(--font-display,\"Space Mono\"),monospace;line-height:1.35;margin:28px 0 10px}\n    .tbr-post h2{font-size:20px;color:var(--signal,#a8ff60)}\n    .tbr-post h3{font-size:16px;color:var(--orbit,#5ec8ff)}\n    .tbr-post h4{font-size:14px;color:var(--ceibal,#ff8a3d)}\n    .tbr-post ul{padding-left:20px;margin:8px 0}\n    .tbr-post li{margin:4px 0}\n    .tbr-post img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--line,#1d2a3b)}\n    .tbr-post blockquote{margin:12px 0;padding:2px 16px;border-left:3px solid var(--ceibal,#ff8a3d);color:var(--mute,#7c8ba0)}\n    .tbr-cover{margin-bottom:20px}\n    .tbr-cover img{width:100%;display:block}\n    .tbr-hero{border:1px solid var(--line,#1d2a3b);border-radius:var(--radius,12px);padding:24px;background:linear-gradient(160deg,var(--panel,#0f1723),var(--panel-2,#0b121c));margin-bottom:24px}\n    .tbr-hero h1{margin:0 0 8px;font-family:var(--font-display,\"Space Mono\"),monospace;font-size:26px;line-height:1.25}\n    .tbr-hero .tbr-hero-sub{margin:0;color:var(--mute,#7c8ba0);font-size:14px}\n    .tbr-downloads{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:16px 0}\n    .tbr-btn{display:flex;flex-direction:column;gap:2px;padding:14px 16px;border:1px solid var(--signal,#a8ff60);border-radius:var(--radius,12px);background:rgba(168,255,96,.06);color:var(--signal,#a8ff60);text-align:center;transition:background .2s,border-color .2s}\n    .tbr-btn:hover{background:rgba(168,255,96,.14);border-color:var(--signal-dim,#6fbf3e);text-decoration:none}\n    .tbr-btn small{font-family:var(--font-data,\"JetBrains Mono\"),monospace;font-size:11px;color:var(--mute,#7c8ba0)}\n    .tbr-btn .tbr-btn-size{color:var(--mute-2,#4c5a6e)}\n    .tbr-src{margin:14px 0}\n    .tbr-status{display:flex;flex-wrap:wrap;align-items:center;gap:10px;font-family:var(--font-data,\"JetBrains Mono\"),monospace;font-size:12px;color:var(--mute,#7c8ba0);margin:10px 0}\n    .tbr-status button{font-family:var(--font-data,\"JetBrains Mono\"),monospace;font-size:11px;color:var(--ink,#e9eff6);background:var(--panel,#0f1723);border:1px solid var(--line,#1d2a3b);border-radius:6px;padding:6px 12px;cursor:pointer}\n    .tbr-status button:hover{color:var(--signal,#a8ff60);border-color:var(--signal,#a8ff60)}\n    .tbr-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}\n    .tbr-dot.on{background:var(--signal,#a8ff60);box-shadow:0 0 8px var(--signal,#a8ff60)}\n    .tbr-dot.off{background:var(--mute-2,#4c5a6e)}\n    .tbr-acc{margin:10px 0}\n    .tbr-acc details{border:1px solid var(--line,#1d2a3b);border-radius:8px;margin:8px 0;background:var(--panel,#0f1723);overflow:hidden}\n    .tbr-acc details[open]{border-color:var(--signal,#a8ff60)}\n    .tbr-acc summary{cursor:pointer;list-style:none;padding:12px 16px;display:flex;align-items:baseline;gap:12px;font-family:var(--font-display,\"Space Mono\"),monospace;font-size:13px}\n    .tbr-acc summary::-webkit-details-marker{display:none}\n    .tbr-acc summary:hover{color:var(--signal,#a8ff60)}\n    .tbr-acc .tbr-acc-date{font-family:var(--font-data,\"JetBrains Mono\"),monospace;font-size:11px;color:var(--mute-2,#4c5a6e);margin-left:auto}\n    .tbr-acc .tbr-acc-body{padding:2px 16px 14px;font-size:14px}\n    .tbr-acc .tbr-acc-body h4{font-size:13px;margin:14px 0 6px}\n    .tbr-acc .tbr-acc-body ul{margin:4px 0}\n    .tbr-acc .tbr-acc-body a{word-break:break-all}\n    .tbr-caption{margin:8px 0 4px;color:var(--mute-2,#4c5a6e);font-family:var(--font-data,\"JetBrains Mono\"),monospace;font-size:12px;text-align:center}\n    .tbr-teaser{border:1px dashed var(--ceibal,#ff8a3d);border-radius:var(--radius,12px);padding:16px 20px;margin:20px 0;background:rgba(255,138,61,.05)}\n    .tbr-teaser b{color:var(--ceibal,#ff8a3d)}\n    .tbr-credits{border:1px solid var(--line,#1d2a3b);border-radius:var(--radius,12px);padding:20px 24px;background:var(--panel,#0f1723);margin:20px 0}\n    .tbr-credits h3{margin:0 0 12px}\n    .tbr-credits .tbr-credits-block{margin:10px 0}\n    .tbr-credits .tbr-credits-name{font-family:var(--font-data,\"JetBrains Mono\"),monospace;font-size:13px;color:var(--ink,#e9eff6);margin:2px 0}\n    .tbr-credits .tbr-credits-role{font-size:12px;color:var(--mute,#7c8ba0);margin:0 0 6px}\n    .tbr-foot{margin-top:28px;padding-top:16px;border-top:1px solid var(--line,#1d2a3b);color:var(--mute,#7c8ba0);font-size:13px}\n    .tbr-muted{color:var(--mute,#7c8ba0)}\n  </style>\n\n  <div class=\"tbr-cover\">\n    <img src=\"https://cdn.jsdelivr.net/gh/Aleperix/tumbleboy-reborn@main/blog/xo-galaxy/portada.png\" alt=\"Portada de TumbleBoy Reborn\">\n  </div>\n\n  <div class=\"tbr-hero\">\n    <p class=\"tbr-hero-sub\">El clásico juego de la <b>XO</b> de Plan Ceibal, rehecho en Godot 3, listo para instalar en teléfonos, tablets y Android TV.</p>\n  </div>\n\n  <!-- CAPTURA 1: Pantalla principal del juego (21 niveles originales) -->\n  <img src=\"https://cdn.jsdelivr.net/gh/Aleperix/tumbleboy-reborn@main/blog/xo-galaxy/menu-principal.png\" alt=\"Pantalla principal de TumbleBoy Reborn\">\n  <p class=\"tbr-caption\">La pantalla principal: historia, partida rápida, editor y packs.</p>\n\n  <p>Tumble Boy es una actividad libre del ecosistema <b>Sugar Labs/OLPC</b>, nacida en un game jam para la XO en 2007 y popularizada en Uruguay con las laptops XO del Plan Ceibal. Esta versión <b>Reborn</b> lo rescata y lo amplía: <b>21 niveles originales</b> + editor de niveles visual + packs descargables, con tres zócalos de guardado para no perder nada.</p>\n\n  <p>Corre nativo en <b>Android</b> (teléfonos, tablets y <b>Android TV</b>) y en escritorio Linux, y está hecho con <b>Godot 3.6 + GLES2</b> para ser ligero incluso en hardware humilde.</p>\n\n  <!-- CAPTURA 2: Editor de niveles con bloques pintados -->\n  <img src=\"https://cdn.jsdelivr.net/gh/Aleperix/tumbleboy-reborn@main/blog/xo-galaxy/editor.png\" alt=\"Editor de niveles visual de TumbleBoy Reborn\">\n  <p class=\"tbr-caption\">El editor visual: pinta bloques, meta y jugador, y guarda tu nivel.</p>\n\n  <h2>Características</h2>\n  <ul>\n    <li><b>Botón Atrás de Android</b> navega hacia atrás: en el menú principal cierra la app, en submenús, partidas y editor vuelve a la pantalla anterior.</li>\n    <li><b>Controles táctiles</b>: joystick virtual y switch Mando ↔ Acelerómetro, recordados entre partidas.</li>\n    <li><b>Android TV</b>: foco completo con D-pad y botones, listo para el sillón.</li>\n    <li><b>Packs comunitarios</b>: descarga niveles hechos por la comunidad (<code>numeros</code>, <code>letras</code>, …).</li>\n    <li><b>Modo historia + partida rápida</b> y <b>3 zócalos de guardado</b>.</li>\n  </ul>\n\n  <h2>Descargar</h2>\n  <p>Elige el APK según tu dispositivo. Los botones siempre funcionan; con conexión se actualizan solos con la información de GitHub (versión y tamaño).</p>\n\n  <div class=\"tbr-downloads\" id=\"tbrDownloads\">\n    <a class=\"tbr-btn\" data-arch=\"ARM64\" href=\"https://github.com/Aleperix/tumbleboy-reborn/releases/latest/download/tumbleboy-reborn-ARM64.apk\">\n      <span>ARM64</span>\n      <small>Teléfonos modernos (Android 8+)<br><span class=\"tbr-btn-size\"></span></small>\n    </a>\n    <a class=\"tbr-btn\" data-arch=\"ARM32\" href=\"https://github.com/Aleperix/tumbleboy-reborn/releases/latest/download/tumbleboy-reborn-ARM32.apk\">\n      <span>ARM32</span>\n      <small>Teléfonos y cajas antiguos<br><span class=\"tbr-btn-size\"></span></small>\n    </a>\n    <a class=\"tbr-btn\" data-arch=\"X86\" href=\"https://github.com/Aleperix/tumbleboy-reborn/releases/latest/download/tumbleboy-reborn-X86.apk\">\n      <span>X86</span>\n      <small>Emuladores y tablets Intel<br><span class=\"tbr-btn-size\"></span></small>\n    </a>\n  </div>\n\n  <div class=\"tbr-status\">\n    <span class=\"tbr-dot off\" id=\"tbrDot\"></span><span id=\"tbrStatus\">Esperando conexión…</span>\n    <button type=\"button\" id=\"tbrRefresh\" title=\"Fuerza una comprobación en GitHub\">Actualizar</button>\n  </div>\n\n  <p class=\"tbr-src tbr-muted\">¿Prefieres el código o compilarlo tú? Repo: <a href=\"https://github.com/Aleperix/tumbleboy-reborn\">github.com/Aleperix/tumbleboy-reborn</a>. Los APKs se generan con Godot 3.6 y se firman con el mismo keystore.</p>\n\n  <h2>Instalación paso a paso</h2>\n  <ol>\n    <li>Descarga el APK de la <b>ARM64</b> (o el que corresponda a tu dispositivo).</li>\n    <li>En el teléfono, abre Ajustes → Seguridad y activa <b>&laquo;Orígenes desconocidos&raquo;</b> (o &laquo;Permitir esta fuente&raquo;) para el navegador o el gestor de archivos.</li>\n    <li>Toca el APK descargado y pulsa <b>Instalar</b>.</li>\n    <li>Para <b>Android TV</b>: copia el APK a un USB y usa un gestor de archivos, o envíalo por ADB (<code>adb install tumbleboy-reborn-ARM64.apk</code>).</li>\n    <li>Si ya tenías una versión anterior, la instalación <b>actualiza</b> sin borrar tus guardados.</li>\n  </ol>\n\n  <!-- CAPTURA 3: Una partida con el joystick virtual visible -->\n  <img src=\"https://cdn.jsdelivr.net/gh/Aleperix/tumbleboy-reborn@main/blog/xo-galaxy/joystick.png\" alt=\"Partida de TumbleBoy Reborn con controles táctiles\">\n  <p class=\"tbr-caption\">En el celular aparecen el joystick y el switch Mando ↔ Acelerómetro.</p>\n\n  <h2>¿Cómo se juega?</h2>\n  <p>Desliza el dedo para mover la bolita por el tablero, esquiva los huecos y llega a la <b>meta</b>. Cada nivel tiene una solución de bloques: algunos son fijos, otros se mueven. Si te trabas, puedes volver a empezar el nivel o usar el editor para crear tus propios retos.</p>\n\n  <!-- CAPTURA 4: Pantalla de packs comunitarios (numeros, letras) -->\n  <img src=\"https://cdn.jsdelivr.net/gh/Aleperix/tumbleboy-reborn@main/blog/xo-galaxy/packs-online.png\" alt=\"Pantalla de packs comunitarios de TumbleBoy Reborn\">\n  <p class=\"tbr-caption\">Los packs comunitarios se descargan desde el propio juego.</p>\n\n  <h2>Novedades y changelog</h2>\n  <p class=\"tbr-muted\" id=\"tbrChangelogNote\">Cargando el historial de versiones…</p>\n  <div class=\"tbr-acc\" id=\"tbrChangelog\"></div>\n\n  <div class=\"tbr-teaser\">\n    <b>Estén atentos…</b> Pronto llegan <b>más plataformas</b>, y hay una <b>sorpresa</b> en camino para los fans de la XO. Si quieres aportar (niveles, packs, código), todo es bienvenido: <a href=\"https://github.com/Aleperix/tumbleboy-reborn\">contribuye en GitHub</a>.\n  </div>\n\n  <!-- CAPTURA 5: Android TV con el foco en un botón -->\n  <img src=\"https://cdn.jsdelivr.net/gh/Aleperix/tumbleboy-reborn@main/blog/xo-galaxy/android-tv.png\" alt=\"TumbleBoy Reborn jugado en Android TV con el foco resaltado\">\n  <p class=\"tbr-caption\">Listo para Android TV: navega todo con el D-pad del control.</p>\n\n  <h2>Contribuye</h2>\n  <p>El proyecto es <b>código abierto</b>. Puedes:</p>\n  <ul>\n    <li>Reportar errores o pedir ideas en <a href=\"https://github.com/Aleperix/tumbleboy-reborn/issues\">Issues</a>.</li>\n    <li>Crear tu <b>pack de niveles</b> con el editor y compartirlo con la comunidad.</li>\n    <li>Hacer una fork y proponer mejoras con un pull request.</li>\n  </ul>\n\n  <h2>Créditos</h2>\n\n  <!-- CAPTURA 6: Pantalla de créditos del juego -->\n  <img src=\"https://cdn.jsdelivr.net/gh/Aleperix/tumbleboy-reborn@main/blog/xo-galaxy/creditos.png\" alt=\"Créditos de TumbleBoy Reborn\">\n  <p class=\"tbr-caption\">Los créditos también están dentro del juego.</p>\n\n  <div class=\"tbr-credits\">\n    <h3>TumbleBoy Reborn</h3>\n    <div class=\"tbr-credits-block\">\n      <p class=\"tbr-credits-role\">Desarrollado por</p>\n      <p class=\"tbr-credits-name\">Aleperix</p>\n      <p class=\"tbr-credits-role\">Hecho para XO Galaxy</p>\n    </div>\n    <div class=\"tbr-credits-block\">\n      <p class=\"tbr-credits-role\">Creadores originales de TumbleBoy</p>\n      <p class=\"tbr-credits-name\">Tom Corbet</p>\n      <p class=\"tbr-credits-name\">Chris Jackson</p>\n      <p class=\"tbr-credits-name\">Eben Myers</p>\n      <p class=\"tbr-credits-name\">Bob Rost</p>\n    </div>\n    <div class=\"tbr-credits-block\">\n      <p class=\"tbr-credits-role\">Agradecimientos</p>\n      <p class=\"tbr-credits-name\">Gummi — Recuperación del Lost Media</p>\n      <p class=\"tbr-credits-name\">SugarLabs — quienes hicieron posible este juego en las XO</p>\n      <p class=\"tbr-credits-name\"><a href=\"https://github.com/sugarlabs/tumbleboy-activity\">github.com/sugarlabs/tumbleboy-activity</a></p>\n    </div>\n  </div>\n\n  <p class=\"tbr-foot tbr-muted\">Hecho con Godot 3 · GLES2 · Código abierto · Juegos XO forever.</p>\n\n  <script>\n  (function () {\n    var REPO = \"Aleperix/tumbleboy-reborn\";\n    var KEY = \"tbr_releases\";\n    var CACHE_SCHEMA = 2;\n    var TTL = 12 * 3600e3;\n\n    var $ = function (id) { return document.getElementById(id); };\n    var dot = $(\"tbrDot\"), status = $(\"tbrStatus\"), note = $(\"tbrChangelogNote\"),\n        acc = $(\"tbrChangelog\"), refreshBtn = $(\"tbrRefresh\");\n\n    function readCache() {\n      try {\n        var raw = localStorage.getItem(KEY);\n        if (!raw) return null;\n        var rec = JSON.parse(raw);\n        if (!rec || rec.schema !== CACHE_SCHEMA || !rec.t || Date.now() - rec.t > TTL) return null;\n        return rec;\n      } catch (e) { return null; }\n    }\n\n    function writeCache(data, etag) {\n      try {\n        var rec = { t: Date.now(), schema: CACHE_SCHEMA, data: data, etag: etag || \"\" };\n        localStorage.setItem(KEY, JSON.stringify(rec));\n      } catch (e) {}\n    }\n\n    function esc(s) {\n      return String(s).replace(/[&<>\"']/g, function (c) {\n        return { \"&\": \"&amp;\", \"<\": \"&lt;\", \">\": \"&gt;\", '\"': \"&quot;\", \"'\": \"&#39;\" }[c];\n      });\n    }\n\n    function inline(s) {\n      return esc(s)\n        .replace(/\\*\\*([^*]+)\\*\\*/g, \"<b>$1</b>\")\n        .replace(/`([^`]+)`/g, \"<code>$1</code>\")\n        .replace(/\\[([^\\]]+)\\]\\((https?:\\/\\/[^)\\s]+)\\)/g, '<a href=\"$2\">$1</a>');\n    }\n\n    function mdToHtml(md) {\n      if (!md) return \"\";\n      var out = [], para = [];\n      var flush = function () { if (para.length) { out.push(\"<p>\" + para.join(\" \") + \"</p>\"); para = []; } };\n      md.split(/\\r?\\n/).forEach(function (line) {\n        var t = line.trim();\n        if (!t) { flush(); return; }\n        var h = /^(#{1,4})\\s+(.*)$/.exec(t);\n        if (h) { flush(); out.push(\"<h4>\" + inline(h[2]) + \"</h4>\"); return; }\n        if (t.indexOf(\"- \") === 0 || t.indexOf(\"* \") === 0) {\n          flush();\n          var lis = [];\n          md.split(/\\r?\\n/).forEach(function (l2) {\n            var tt = l2.trim();\n            if (tt.indexOf(\"- \") === 0 || tt.indexOf(\"* \") === 0) lis.push(\"<li>\" + inline(tt.slice(2)) + \"</li>\");\n            else if (tt) { /* ignore stray */ }\n          });\n          out.push(\"<ul>\" + lis.join(\"\") + \"</ul>\");\n          return;\n        }\n        if (/^#{4,}/.test(t)) return;\n        para.push(inline(t));\n      });\n      flush();\n      return out.join(\"\");\n    }\n\n    function fmtDate(iso) {\n      if (!iso) return \"\";\n      try {\n        var d = new Date(iso);\n        return d.toLocaleDateString(undefined, { year: \"numeric\", month: \"short\", day: \"numeric\" });\n      } catch (e) { return \"\"; }\n    }\n\n    function updateButtons(releases) {\n      var links = document.querySelectorAll(\"#tbrDownloads .tbr-btn\");\n      links.forEach(function (a) {\n        var arch = a.getAttribute(\"data-arch\");\n        var name = \"tumbleboy-reborn-\" + arch + \".apk\";\n        var size = a.querySelector(\".tbr-btn-size\");\n        var parts = [];\n        if (releases && releases.length) {\n          var r = releases[0];\n          if (r.tag_name) parts.push(r.tag_name);\n          var asset = (r.assets || []).filter(function (x) { return x.name === name; })[0];\n          if (asset && asset.size) parts.push(Math.round(asset.size / 1048576) + \" MB\");\n        }\n        if (size) size.textContent = parts.join(\"\\u00b7\");\n      });\n    }\n\n    function setStatus(releases, rate) {\n      var latest = releases && releases[0];\n      if (latest && latest.tag_name) {\n        dot.className = \"tbr-dot on\";\n        status.textContent = \"Publicado en GitHub: \" + latest.tag_name +\n          (releases.length > 1 ? \"\\u00b7 \" + releases.length + \" versiones\" : \"\") +\n          (rate ? \"\\u00b7 \" + rate + \" consultas restantes\" : \"\");\n      } else {\n        dot.className = \"tbr-dot off\";\n        status.textContent = \"Sin conexi\\u00f3n: los botones llevan a la versi\\u00f3n publicada en GitHub.\";\n      }\n    }\n\n    function render(releases, rate) {\n      note.style.display = \"none\";\n      acc.innerHTML = \"\";\n      releases = releases.slice(0, 12);\n      releases.forEach(function (r, i) {\n        var body = mdToHtml(r.body || \"\");\n        var assets = (r.assets || []).map(function (a) {\n          return '<div><a href=\"' + esc(a.browser_download_url) + '\">' + esc(a.name) +\n                 '</a> <span class=\"tbr-muted\">(' + Math.round((a.size || 0) / 1048576) + \" MB)</span></div>\";\n        }).join(\"\");\n        var d = document.createElement(\"details\");\n        if (i === 0) d.setAttribute(\"open\", \"\");\n        d.innerHTML = '<summary><span>' + esc(r.tag_name || r.name) +\n          '</span><span class=\"tbr-acc-date\">' + fmtDate(r.published_at) + \"</span></summary>\" +\n          '<div class=\"tbr-acc-body\">' + body + (assets ? \"<div>\" + assets + \"</div>\" : \"\") + \"</div>\";\n        acc.appendChild(d);\n      });\n      updateButtons(releases);\n      setStatus(releases, rate);\n    }\n\n    var JSON_URL = \"https://cdn.jsdelivr.net/gh/\" + REPO + \"@main/blog/xo-galaxy/releases.json\";\n    var API_URL = \"https://api.github.com/repos/\" + REPO + \"/releases?per_page=100\";\n\n    function fetchReleases(force) {\n      var cached = readCache();\n      if (cached && !force) {\n        render(cached.data);\n        return;\n      }\n      setStatus(null);\n      fetch(JSON_URL, { cache: \"no-store\" })\n        .then(function (res) {\n          if (!res.ok) throw new Error(\"jsdelivr \" + res.status);\n          return res.json();\n        })\n        .then(function (data) {\n          if (!Array.isArray(data) || !data.length) throw new Error(\"no data\");\n          writeCache(data, \"\");\n          render(data);\n        })\n        .catch(function () {\n          fetchGithub(cached);\n        });\n    }\n\n    function fetchGithub(cached) {\n      var headers = {};\n      if (cached && cached.etag) headers[\"If-None-Match\"] = cached.etag;\n      fetch(API_URL, { headers: headers })\n        .then(function (res) {\n          if (res.status === 304 && cached) {\n            writeCache(cached.data, cached.etag);\n            render(cached.data);\n            return;\n          }\n          if (!res.ok) {\n            if (cached) render(cached.data);\n            else setStatus(null);\n            return;\n          }\n          var etag = res.headers.get(\"ETag\") || \"\";\n          var remaining = res.headers.get(\"X-RateLimit-Remaining\");\n          return res.json().then(function (data) {\n            if (!Array.isArray(data) || !data.length) throw new Error(\"no data\");\n            writeCache(data, etag);\n            render(data, remaining);\n          });\n        })\n        .catch(function () {\n          if (cached) render(cached.data);\n          else setStatus(null);\n        });\n    }\n\n    refreshBtn.addEventListener(\"click\", function () { fetchReleases(true); });\n    var c = readCache();\n    if (c) render(c.data);\n    fetchReleases(false);\n  })();\n  </script>\n\n</div>\n"
+        },
+        "link": [
+          {
+            "rel": "replies",
+            "type": "application/atom+xml",
+            "href": "https://xogalax.blogspot.com/feeds/6641116164386469933/comments/default",
+            "title": "Enviar comentarios"
+          },
+          {
+            "rel": "replies",
+            "type": "text/html",
+            "href": "https://xogalax.blogspot.com/2026/08/tumbleboy-reborn-en-xo-galaxy.html#comment-form",
+            "title": "0 comentarios"
+          },
+          {
+            "rel": "edit",
+            "type": "application/atom+xml",
+            "href": "https://www.blogger.com/feeds/6925527308405412397/posts/default/6641116164386469933"
+          },
+          {
+            "rel": "self",
+            "type": "application/atom+xml",
+            "href": "https://www.blogger.com/feeds/6925527308405412397/posts/default/6641116164386469933"
+          },
+          {
+            "rel": "alternate",
+            "type": "text/html",
+            "href": "https://xogalax.blogspot.com/2026/08/tumbleboy-reborn-en-xo-galaxy.html",
+            "title": "TumbleBoy Reborn en XO Galaxy"
+          }
+        ],
+        "author": [
+          {
+            "name": {
+              "$t": "Aleperix"
+            },
+            "uri": {
+              "$t": "http://www.blogger.com/profile/09031276871035412926"
+            },
+            "email": {
+              "$t": "noreply@blogger.com"
+            },
+            "gd$image": {
+              "rel": "http://schemas.google.com/g/2005#thumbnail",
+              "width": "16",
+              "height": "16",
+              "src": "https://img1.blogblog.com/img/b16-rounded.gif"
+            }
+          }
+        ],
+        "thr$total": {
+          "$t": "0"
+        }
+      }
+    ]
+  }
+}
