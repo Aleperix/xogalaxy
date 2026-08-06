@@ -18,6 +18,10 @@
       {
         "name": "STATS",
         "class_name": "Stats"
+      },
+      {
+        "name": "ROOM",
+        "class_name": "Room"
       }
     ]
   },
@@ -25,6 +29,10 @@
     {
       "tag": "v1",
       "new_sqlite_classes": ["Stats"]
+    },
+    {
+      "tag": "v2",
+      "new_sqlite_classes": ["Room"]
     }
   ],
   "vars": {

@@ -18,6 +18,10 @@ theme/    Template de Blogger (XML) + releases/
 | `GET /followers` | Seguidores de Comunidad (frame de Blogger, cache KV 30 min) |
 | `GET /visits` | Total de visitas (DO Stats SQLite) |
 | `GET /visits?hit=1` | Incrementa visitas y devuelve total |
+| `GET /chat/history?room=X` | Últimos 50 mensajes (máx 200) de una sala |
+| `POST /chat/message` | Publica `{room, nickname, body}` en una sala |
+| `POST /chat/mod/delete` | Borrado soft `{room, id}` (Bearer `MOD_KEY`) |
+| `GET /chat/ws?room=X&nick=Y` | WebSocket Hibernation (chat en vivo) |
 
 Orígenes permitidos vía `ALLOWED_ORIGINS` (CORS + validación). Extensible a dominios futuros.
 
@@ -37,14 +41,15 @@ npm run dev     # wrangler dev
 cd worker
 npx wrangler kv namespace create XOGALAXY_KV   # una vez; anotar el id
 # completar el id en wrangler.jsonc
+npx wrangler secret put MOD_KEY                # una vez; clave del borrado de chat
 npm run deploy
 ```
 
 ## Fases
 
 0. Backend base: `/followers`, `/visits`, `/health`, KV, DO Stats, tests, deploy. ✅ planificado
-1. Respaldo total + espejo (GitHub + R2/imágenes + Pages + Wayback)
-2. Chat + moderación (DO Room, Hibernation API, D1 nocturno)
+1. Respaldo total + espejo (GitHub + R2/imágenes + Pages + Wayback) — R2 pausado, Wayback en marcha
+2. Chat + moderación (DO Room, Hibernation API) ✅ deployado — archivo nocturno a D1 pendiente
 3. Frontend `app.js` (Router, hooks, chunks)
 4. Template v16 (multi-proveedor, chat UI, modo claro, comentarios nativos)
 5. PWA sobre el espejo (manifest, service worker, offline, cola de chat)

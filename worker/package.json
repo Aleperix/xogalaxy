@@ -7,7 +7,7 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "test": "vitest run",
-    "check": "node --check src/index.js && node --check src/stats.js && node --check src/followers.js && node --check src/wayback.js"
+    "check": "node --check src/index.js && node --check src/stats.js && node --check src/followers.js && node --check src/wayback.js && node --check src/room.js"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.20.2",

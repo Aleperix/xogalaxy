@@ -1,8 +1,10 @@
 import { Stats } from "./stats.js";
+import { Room } from "./room.js";
 import { getFollowers } from "./followers.js";
 import { urlsFromSitemap, saveToWayback } from "./wayback.js";
 
 export { Stats } from "./stats.js";
+export { Room } from "./room.js";
 
 const BLOG_ID = "6925527308405412397";
 const BLOG_URL = "https://xogalax.blogspot.com";
@@ -38,6 +40,14 @@ export default {
           return handleFollowers(request, env, origin);
         case "/visits":
           return handleVisits(request, env, origin);
+        case "/chat/ws":
+          return handleChatWs(request, env, origin);
+        case "/chat/history":
+          return handleChatHistory(request, env, origin);
+        case "/chat/message":
+          return handleChatMessage(request, env, origin);
+        case "/chat/mod/delete":
+          return handleChatModDelete(request, env, origin);
         default:
           return json({ error: "not found" }, 404, cors(origin));
       }
@@ -85,6 +95,69 @@ async function handleVisits(request, env, origin) {
   const stub = env.STATS.getByName("global");
   const value = hit ? await stub.hit(VISITS_KEY) : await stub.get(VISITS_KEY);
   return json({ key: VISITS_KEY, value, hit }, 200, cors(origin));
+}
+
+async function handleChatWs(request, env, origin) {
+  if (!request.headers.get("Upgrade")) {
+    return json({ error: "websocket upgrade required" }, 426, cors(origin));
+  }
+  const room = new URL(request.url).searchParams.get("room") || "general";
+  const stub = env.ROOM.getByName(room.slice(0, 64));
+  return stub.fetch(request);
+}
+
+async function handleChatHistory(request, env, origin) {
+  const url = new URL(request.url);
+  const room = (url.searchParams.get("room") || "general").slice(0, 64);
+  const limit = Math.min(Number(url.searchParams.get("limit")) || 50, 200);
+  const stub = env.ROOM.getByName(room);
+  const messages = await stub.history(room, limit);
+  return json({ room, messages }, 200, cors(origin));
+}
+
+async function handleChatMessage(request, env, origin) {
+  if (request.method !== "POST") {
+    return json({ error: "method not allowed" }, 405, cors(origin));
+  }
+  let body;
+  try {
+    body = await request.json();
+  } catch (err) {
+    return json({ error: "invalid json" }, 400, cors(origin));
+  }
+  const room = String(body.room || "general").slice(0, 64);
+  const nickname = String(body.nickname || "").trim().slice(0, 32);
+  const text = String(body.body || "").trim().slice(0, 1000);
+  if (!nickname || !text) {
+    return json({ error: "nickname and body required" }, 400, cors(origin));
+  }
+  const stub = env.ROOM.getByName(room);
+  const message = await stub.sendMessage(room, nickname, text);
+  return json({ message }, 200, cors(origin));
+}
+
+async function handleChatModDelete(request, env, origin) {
+  if (request.method !== "POST") {
+    return json({ error: "method not allowed" }, 405, cors(origin));
+  }
+  const auth = request.headers.get("Authorization");
+  if (!env.MOD_KEY || auth !== `Bearer ${env.MOD_KEY}`) {
+    return json({ error: "unauthorized" }, 401, cors(origin));
+  }
+  let body;
+  try {
+    body = await request.json();
+  } catch (err) {
+    return json({ error: "invalid json" }, 400, cors(origin));
+  }
+  const room = String(body.room || "general").slice(0, 64);
+  const id = Number(body.id);
+  if (!Number.isInteger(id)) {
+    return json({ error: "id required" }, 400, cors(origin));
+  }
+  const stub = env.ROOM.getByName(room);
+  await stub.modDelete(room, id);
+  return json({ ok: true, id }, 200, cors(origin));
 }
 
 function parseOrigins(raw) {
