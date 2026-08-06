@@ -1,10 +1,12 @@
 import { Stats } from "./stats.js";
 import { getFollowers } from "./followers.js";
+import { urlsFromSitemap, saveToWayback } from "./wayback.js";
 
 export { Stats } from "./stats.js";
 
 const BLOG_ID = "6925527308405412397";
 const BLOG_URL = "https://xogalax.blogspot.com";
+const SITEMAP_URL = `${BLOG_URL}/sitemap.xml`;
 const FOLLOWERS_KV_KEY = "followers:count";
 const FOLLOWERS_CACHE_TTL = 1800;
 const VISITS_KEY = "visits";
@@ -43,6 +45,19 @@ export default {
       console.error("handler error:", err);
       return json({ error: "internal error" }, 500, cors(origin));
     }
+  },
+
+  async scheduled(controller, env) {
+    const urls = [BLOG_URL + "/"];
+    try {
+      urls.push(...(await urlsFromSitemap(SITEMAP_URL)));
+    } catch (err) {
+      console.error("sitemap error:", err);
+    }
+    const deduped = [...new Set(urls)];
+    const results = await saveToWayback(deduped);
+    console.log("wayback:", JSON.stringify(results));
+    return results;
   },
 };
 

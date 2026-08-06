@@ -29,5 +29,8 @@
   ],
   "vars": {
     "ALLOWED_ORIGINS": "https://xogalax.blogspot.com,https://xogalaxy.pages.dev"
+  },
+  "triggers": {
+    "crons": ["17 4 * * *"]
   }
 }
