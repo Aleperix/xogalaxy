@@ -68,6 +68,23 @@ npm run build   # genera dist/app.js
 node inject.mjs ../theme/xogalaxy-template.xml salida.xml
 ```
 
+### Despliegue en Blogger (IMPORTANTE)
+
+`theme/xogalaxy-template.xml` es la **fuente** (sin el bundle). Para subir el tema al
+editor de Blogger hay que usar el archivo **inyectado** (contiene `app.js` embebido y el
+SPA/chat):
+
+```bash
+cd web
+npm run build
+node inject.mjs ../theme/xogalaxy-template.xml ../theme/xogalaxy-template.injected.xml
+# subir xogalaxy-template.injected.xml en Blogger → Tema → Editar HTML → pegar
+```
+
+Si se sube la fuente, el blog queda server-rendered pero **sin** bundle: el chat, el
+router SPA, el badge y la re-ejecución de comentarios no funcionan (queda el marcador
+`<!-- XOGALAXY_APP_SCRIPT -->` visible en el HTML).
+
 ## Fases
 
 0. Backend base: `/followers`, `/visits`, `/health`, KV, DO Stats, tests, deploy. ✅ planificado
@@ -88,8 +105,9 @@ node inject.mjs ../theme/xogalaxy-template.xml salida.xml
   - Disqus eliminado (contadores, `.disqus-load`, `#disqus_thread`, API key, JSONP, count.js) → comentarios nativos de Blogger vía `commentPicker` con `#comments`, `.comment-form` y contadores `<data:post.numberOfComments/>` enlazando a `#comments`.
   - CountAPI eliminado → visitas vía backend.
   - Botón `#theme-toggle` en la nav (sun/moon) + variables CSS `[data-theme="light"]`; componentes migrados de `--void` a `--bg`.
-  - Comentarios en panel (fondo `--panel`, borde `--line`, radius) con form dentro de la caja; contador con clase propia `comment-count-link` para no chocar con la sección.
+  - Comentarios en panel (fondo `--panel`, borde `--line`, radius) con form dentro de la caja; contador con clase propia `comment-count-link` para no chocar con la sección. El hilo anidado (`goog.comments`/`comment-holder`) queda estilizado con las mismas variables del tema.
   - Chat: badge de no-leídos en la nav (`[data-chat-badge]`); los scripts de comentarios se re-ejecutan tras el swap SPA (`BLOG_CMT_createIframe`).
+  - **Deploy**: subir el template **inyectado** (`inject.mjs`); la fuente de `theme/` no incluye el bundle (ver "Despliegue en Blogger").
 
 ## Seguridad
 
