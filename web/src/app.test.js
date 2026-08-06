@@ -7,7 +7,8 @@ describe("dist/app.js smoke", () => {
     document.body.innerHTML =
       '<button class="nav-toggle">☰</button><div id="nav-backdrop"></div><nav id="main-nav"><a href="#x">x</a></nav>' +
       '<h1 id="site-title">XO Galaxy Test</h1><div class="hero-actions"><a href="#feed">Ver posts</a></div>' +
-      '<p id="stat-posts"></p><p id="stat-followers"></p><p id="stat-visits"></p>' +
+      '<button id="theme-toggle" type="button"><i data-lucide="sun"></i></button>' +
+      '<p id="stat-posts"></p><p id="stat-comments"></p><p id="stat-followers"></p><p id="stat-visits"></p>' +
       '<main class="main-layout"><article class="post-single"><h2 class="post-title">T</h2></article></main>' +
       '<div id="chat-app" data-room="general"></div>';
     globalThis.fetch = async () => new Response("{}", { status: 200 });
@@ -35,5 +36,6 @@ describe("dist/app.js smoke", () => {
     expect(document.querySelector(".xogalaxy-chat")).toBeTruthy();
     expect(document.querySelector(".chat-form")).toBeTruthy();
     expect(document.getElementById("site-title").getAttribute("data-decorated")).toBe("1");
+    expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
   });
 });

@@ -9,6 +9,7 @@
 
   function boot() {
     X.core.cleanupDownloadCache();
+    X.core.setupTheme();
     X.core.setupNav();
     X.core.decorateTitle();
     X.core.initIcons();

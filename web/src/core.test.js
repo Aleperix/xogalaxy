@@ -68,3 +68,28 @@ describe("core DOM helpers", () => {
     expect(localStorage.getItem("otro")).toBe("x");
   });
 });
+
+describe("tema claro/oscuro", () => {
+  beforeEach(() => {
+    document.body.innerHTML =
+      '<button id="theme-toggle" type="button"><i data-lucide="sun"></i></button>';
+    localStorage.removeItem("xogalaxy.theme");
+    document.documentElement.removeAttribute("data-theme");
+  });
+
+  it("aplica oscuro por defecto y persiste el cambio", () => {
+    window.XOGalaxy.core.setupTheme();
+    expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
+
+    document.getElementById("theme-toggle").click();
+    expect(document.documentElement.getAttribute("data-theme")).toBe("light");
+    expect(localStorage.getItem("xogalaxy.theme")).toBe("light");
+    expect(document.getElementById("theme-toggle").getAttribute("aria-label")).toBe("Cambiar a modo oscuro");
+  });
+
+  it("respeta el tema guardado en localStorage", () => {
+    localStorage.setItem("xogalaxy.theme", "light");
+    window.XOGalaxy.core.setupTheme();
+    expect(document.documentElement.getAttribute("data-theme")).toBe("light");
+  });
+});

@@ -209,6 +209,38 @@
     } catch (err) {}
   }
 
+  // ---- Tema claro/oscuro (oscuro por defecto, persistido en localStorage, sin auto) ----
+  var THEME_KEY = "xogalaxy.theme";
+  function currentTheme() {
+    try {
+      return localStorage.getItem(THEME_KEY) || "dark";
+    } catch (err) {
+      return "dark";
+    }
+  }
+  function applyTheme(theme) {
+    document.documentElement.setAttribute("data-theme", theme);
+    try {
+      localStorage.setItem(THEME_KEY, theme);
+    } catch (err) {}
+    var btn = qs("#theme-toggle");
+    if (!btn) return;
+    var dark = theme === "dark";
+    btn.setAttribute("aria-label", dark ? "Cambiar a modo claro" : "Cambiar a modo oscuro");
+    var icon = btn.querySelector("[data-lucide]");
+    if (icon) icon.setAttribute("data-lucide", dark ? "sun" : "moon");
+    initIcons();
+  }
+  function setupTheme() {
+    applyTheme(currentTheme());
+    var btn = qs("#theme-toggle");
+    if (btn) {
+      btn.addEventListener("click", function () {
+        applyTheme(document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark");
+      });
+    }
+  }
+
   X.core = {
     hooks: { add: addHook, run: runHooks },
     utils: { qs: qs, qsa: qsa, el: el, escHtml: escHtml, fmt: fmt, animateStat: animateStat, getJSON: getJSON, postJSON: postJSON, getText: getText },
@@ -218,6 +250,7 @@
     setupNav: setupNav,
     loadMore: loadMore,
     cleanupDownloadCache: cleanupDownloadCache,
+    setupTheme: setupTheme,
   };
   X.hooks = { add: addHook, run: runHooks };
 })(window);

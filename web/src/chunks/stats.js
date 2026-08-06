@@ -25,6 +25,21 @@
       });
   }
 
+  function loadComments() {
+    fetch("/feeds/comments/default?alt=json&max-results=0")
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (data) {
+        var total = parseInt(data.feed && data.feed.openSearch$totalResults && data.feed.openSearch$totalResults.$t, 10);
+        utils.animateStat(utils.qs("#stat-comments"), total);
+      })
+      .catch(function () {
+        var el = utils.qs("#stat-comments");
+        if (el) el.textContent = "—";
+      });
+  }
+
   function loadFollowers() {
     api
       .followers()
@@ -48,12 +63,14 @@
 
   function refresh() {
     loadPosts();
+    loadComments();
     loadFollowers();
     loadVisits(false);
   }
 
   function init() {
     loadPosts();
+    loadComments();
     loadFollowers();
     loadVisits(true);
   }

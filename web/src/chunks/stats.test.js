@@ -10,17 +10,21 @@ function flush() {
 describe("chunk stats", () => {
   beforeEach(() => {
     document.body.innerHTML =
-      '<div><p id="stat-posts">—</p></div><div><p id="stat-followers">—</p></div><div><p id="stat-visits">—</p></div>';
+      '<div><p id="stat-posts">—</p></div><div><p id="stat-comments">—</p></div>' +
+      '<div><p id="stat-followers">—</p></div><div><p id="stat-visits">—</p></div>';
     window.matchMedia = () => ({ matches: true, addEventListener() {}, removeEventListener() {} });
   });
 
-  it("init carga posts, seguidores y visitas con HIT", async () => {
+  it("init carga posts, comentarios, seguidores y visitas con HIT", async () => {
     const calls = [];
     vi.stubGlobal("fetch", async (url) => {
       const u = new URL(url, "http://localhost");
       calls.push(u.pathname + u.search);
       if (u.pathname === "/feeds/posts/summary") {
         return new Response(JSON.stringify({ feed: { openSearch$totalResults: { $t: "3" } } }), { status: 200 });
+      }
+      if (u.pathname === "/feeds/comments/default") {
+        return new Response(JSON.stringify({ feed: { openSearch$totalResults: { $t: "5" } } }), { status: 200 });
       }
       if (u.pathname === "/followers") {
         return new Response(JSON.stringify({ count: 12 }), { status: 200 });
@@ -35,6 +39,7 @@ describe("chunk stats", () => {
     await flush();
 
     expect(document.getElementById("stat-posts").textContent).toBe("3");
+    expect(document.getElementById("stat-comments").textContent).toBe("5");
     expect(document.getElementById("stat-followers").textContent).toBe("12");
     expect(document.getElementById("stat-visits").textContent).toBe("56");
     expect(calls).toContain("/visits?hit=1");
