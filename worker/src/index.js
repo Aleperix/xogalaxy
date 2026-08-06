@@ -180,9 +180,10 @@ function handlePreflight(origin, allowed) {
     status: 204,
     headers: {
       "Access-Control-Allow-Origin": origin,
-      "Access-Control-Allow-Methods": "GET, OPTIONS",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
       "Access-Control-Allow-Headers": "*",
       "Access-Control-Max-Age": "86400",
+      "Cache-Control": "no-store",
       Vary: "Origin",
     },
   });

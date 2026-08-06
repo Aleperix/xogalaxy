@@ -42,6 +42,16 @@ describe("Worker routes", () => {
     expect(res.headers.get("Access-Control-Allow-Origin")).toBe("https://xogalax.blogspot.com");
   });
 
+  it("OPTIONS preflight allows POST for chat", async () => {
+    const res = await exports.default.fetch("http://xogalaxy-backend.test/chat/message", {
+      method: "OPTIONS",
+      headers: { Origin: "https://xogalax.blogspot.com" },
+    });
+    expect(res.status).toBe(204);
+    expect(res.headers.get("Access-Control-Allow-Methods")).toBe("GET, POST, OPTIONS");
+    expect(res.headers.get("Access-Control-Allow-Headers")).toBe("*");
+  });
+
   it("echoes CORS for allowed origins", async () => {
     const res = await exports.default.fetch("http://xogalaxy-backend.test/visits", {
       headers: { Origin: "https://xogalaxy.pages.dev" },

@@ -1,0 +1,17 @@
+{
+  "name": "xogalaxy-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Frontend XO Galaxy: router SPA + chunks (core/stats/chat). Se empaqueta en web/dist/app.js y se inyecta en el template de Blogger.",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "node --check src/core.js && node --check src/api.js && node --check src/router.js && node --check src/chunks/stats.js && node --check src/chunks/chat.js && node --check src/app.js && node --check build.mjs"
+  },
+  "devDependencies": {
+    "happy-dom": "^20.11.1",
+    "vitest": "^4.1.0"
+  }
+}

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>XO Galaxy — harness QA</title>
+  <style>
+    body { font-family: sans-serif; max-width: 720px; margin: 0 auto; padding: 24px; }
+    main.main-layout { padding: 8px 0; }
+    .chat-msgs { list-style: none; margin: 8px 0; padding: 0; height: 180px; overflow-y: auto; border: 1px solid #ddd; }
+    .chat-msg { padding: 4px 6px; }
+    .chat-msg-meta { font-weight: 700; margin-right: 6px; }
+    .chat-form { display: flex; gap: 6px; }
+    .chat-form input { flex: 1; }
+    .stats { display: flex; gap: 24px; }
+    .nav-toggle { display: block; }
+  </style>
+</head>
+<body>
+  <button class="nav-toggle">☰</button>
+  <div id="nav-backdrop"></div>
+  <nav id="main-nav"><a href="#feed">Feed</a></nav>
+  <h1 id="site-title">XO Galaxy Test</h1>
+  <div class="hero-actions"><a href="#feed">Ver posts</a></div>
+
+  <div class="stats">
+    <div><p class="stat-value" id="stat-posts">—</p><span>Posts</span></div>
+    <div><p class="stat-value" id="stat-followers">—</p><span>Seguidores</span></div>
+    <div><p class="stat-value" id="stat-visits">—</p><span>Visitas</span></div>
+  </div>
+
+  <main class="main-layout">
+    <article class="post-single">
+      <h2 class="post-title">Post actual</h2>
+      <p>Contenido servido por el blog.</p>
+      <p class="load-more"><a href="/pagina-2">Cargar entradas anteriores ↓</a></p>
+    </article>
+  </main>
+
+  <section id="chat">
+    <div id="chat-app" data-room="general"></div>
+  </section>
+
+  <script src="https://cdn.jsdelivr.net/npm/lucide@1/dist/umd/lucide.min.js"></script>
+  <script>
+    window.XOGALAXY_CONFIG = { backend: "https://backend.xogalaxy.workers.dev" };
+  </script>
+  <script src="../dist/app.js"></script>
+</body>
+</html>
