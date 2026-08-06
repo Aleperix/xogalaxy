@@ -18,6 +18,7 @@
   var MAX_RETRY = 15000;
   var ONLINE_CLASS = "chat-online";
   var OFFLINE_CLASS = "chat-offline";
+  var BADGE_SELECTOR = '.nav-link[href="#chat"] [data-chat-badge]';
 
   function create() {
     var app = utils.qs("#chat-app");
@@ -60,6 +61,36 @@
     var retries = 0;
     var closed = false;
     var online = false;
+    var unread = 0;
+    var visible = true;
+
+    function renderBadge() {
+      var badge = utils.qs(BADGE_SELECTOR);
+      if (!badge) return;
+      if (unread > 0) {
+        badge.textContent = unread > 99 ? "99+" : String(unread);
+        badge.removeAttribute("hidden");
+      } else {
+        badge.setAttribute("hidden", "");
+      }
+    }
+
+    function clearUnread() {
+      if (unread === 0) return;
+      unread = 0;
+      renderBadge();
+    }
+
+    function bumpUnread() {
+      if (visible) return;
+      unread += 1;
+      renderBadge();
+    }
+
+    function setVisible(v) {
+      visible = !!v;
+      if (visible) clearUnread();
+    }
 
     function setStatus(text, cls) {
       status.textContent = text;
@@ -107,6 +138,7 @@
         (data.messages || []).forEach(append);
       } else if (data.type === "message") {
         append(data.message);
+        bumpUnread();
       } else if (data.type === "deleted") {
         removeMessage(data.id);
       }
@@ -195,8 +227,45 @@
       }
     });
 
+    root.addEventListener("focusin", clearUnread);
+    root.addEventListener("click", clearUnread);
+
+    function onDocClick(e) {
+      var link = e.target.closest ? e.target.closest('.nav-link[href="#chat"]') : null;
+      if (!link) return;
+      setVisible(true);
+    }
+    document.addEventListener("click", onDocClick);
+
+    var observer = null;
+    if (typeof global.IntersectionObserver === "function") {
+      observer = new global.IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          setVisible(entry.isIntersecting);
+        });
+      });
+      observer.observe(app);
+    }
+
     connect();
-    return { root: root, close: function () { closed = true; if (ws) try { ws.close(); } catch (err) {} } };
+    return {
+      root: root,
+      setVisible: setVisible,
+      close: function () {
+        closed = true;
+        if (ws) {
+          try {
+            ws.close();
+          } catch (err) {}
+        }
+        document.removeEventListener("click", onDocClick);
+        if (observer) {
+          try {
+            observer.disconnect();
+          } catch (err) {}
+        }
+      },
+    };
   }
 
   var instance = null;
@@ -212,5 +281,9 @@
     }
   }
 
-  X.chat = { init: init, reset: reset };
+  function setVisible(visible) {
+    if (instance) instance.setVisible(visible);
+  }
+
+  X.chat = { init: init, reset: reset, setVisible: setVisible };
 })(window);

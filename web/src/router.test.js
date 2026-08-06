@@ -62,4 +62,70 @@ describe("router SPA", () => {
     expect(spy).not.toHaveBeenCalled();
     spy.mockRestore();
   });
+
+  it("re-ejecuta los scripts de section#comments tras navegar por SPA", async () => {
+    const { fetch } = globalThis;
+    vi.stubGlobal("fetch", async (url) => {
+      if (String(url).includes("/con-comentarios")) {
+        return new Response(
+          "<html><head><title>Con comentarios</title></head><body><main class=\"main-layout\">" +
+            "<section id=\"comments\"><script>BLOG_CMT_createIframe('relay');</script></section>" +
+            "</main></body></html>",
+          { status: 200, headers: { "Content-Type": "text/html" } }
+        );
+      }
+      return fetch(url);
+    });
+    const createSpy = vi.spyOn(document, "createElement");
+
+    await window.XOGalaxy.router.navigate("/con-comentarios.html");
+    await flush();
+
+    const scriptClones = createSpy.mock.calls.filter((c) => c[0] === "script");
+    expect(scriptClones).toHaveLength(1);
+    const replaced = document.querySelector("section#comments script");
+    expect(replaced.textContent).toContain("BLOG_CMT_createIframe");
+    vi.unstubAllGlobals();
+    createSpy.mockRestore();
+  });
+
+  it("no re-ejecuta scripts fuera de section#comments", async () => {
+    const { fetch } = globalThis;
+    vi.stubGlobal("fetch", async (url) => {
+      if (String(url).includes("/con-otro-script")) {
+        return new Response(
+          "<html><head><title>Otro</title></head><body><main class=\"main-layout\">" +
+            "<script>var otro = 1;</script>" +
+            "<p>sin comentarios</p></main></body></html>",
+          { status: 200, headers: { "Content-Type": "text/html" } }
+        );
+      }
+      return fetch(url);
+    });
+    const createSpy = vi.spyOn(document, "createElement");
+
+    await window.XOGalaxy.router.navigate("/con-otro-script.html");
+    await flush();
+
+    expect(createSpy.mock.calls.filter((c) => c[0] === "script")).toHaveLength(0);
+    vi.unstubAllGlobals();
+    createSpy.mockRestore();
+  });
+
+  it("no intercepta un link al mismo path con hash (#comments)", () => {
+    const spy = vi.spyOn(window.XOGalaxy.router, "navigate").mockResolvedValue();
+    const link = document.createElement("a");
+    link.href = "/#comments";
+    link.textContent = "comentarios";
+    document.body.appendChild(link);
+
+    link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 }));
+
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
+  });
 });
+
+function flush() {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}

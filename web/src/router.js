@@ -15,6 +15,36 @@
     X.hooks.run("swap");
   }
 
+  /**
+   * Re-ejecuta los <script> de la sección de comentarios (Blogger).
+   * `current.innerHTML = next.innerHTML` inserta los nodos sin ejecutarlos,
+   * así que BLOG_CMT_createIframe() nunca corre al navegar por SPA y el
+   * iframe del form queda vacío. Los ejecutamos en orden documento: los de
+   * src primero (await load) y luego los inline, clonando y reemplazando.
+   */
+  function execCommentsScripts(root) {
+    var section = root && root.querySelector("section#comments");
+    if (!section) return;
+    var scripts = Array.prototype.slice.call(section.querySelectorAll("script"));
+    scripts.reduce(function (p, s) {
+      return p.then(function () {
+        return new Promise(function (resolve) {
+          var clone = document.createElement("script");
+          if (s.src) {
+            clone.src = s.src;
+            clone.async = true;
+            clone.onload = resolve;
+            clone.onerror = resolve;
+          } else {
+            clone.textContent = s.textContent;
+            resolve();
+          }
+          s.parentNode.replaceChild(clone, s);
+        });
+      });
+    }, Promise.resolve());
+  }
+
   function navigate(url, replace) {
     return core.utils
       .getText(url)
@@ -46,6 +76,7 @@
           else window.scrollTo(0, 0);
         }
         afterSwap();
+        execCommentsScripts(current);
       })
       .catch(function () {
         location.href = url;
@@ -75,6 +106,8 @@
       return;
     }
     if (url.origin !== location.origin) return;
+    var samePath = url.pathname + url.search === location.pathname + location.search;
+    if (samePath) return;
     e.preventDefault();
     X.router.navigate(url.pathname + url.search + url.hash);
   }

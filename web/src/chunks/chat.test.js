@@ -142,4 +142,44 @@ describe("chunk chat", () => {
     expect(document.querySelector(".chat-msg[data-id='8'] .chat-msg-body").textContent).toBe("envío offline");
     vi.unstubAllGlobals();
   });
+
+  it("acumula no-leídos mientras el chat está oculto y los limpia al verse", () => {
+    document.body.innerHTML =
+      '<a class="nav-link" href="#chat">Chat<span class="nav-badge" data-chat-badge hidden>0</span></a>' +
+      '<div id="chat-app" data-room="general"></div>';
+    window.XOGalaxy.chat.init();
+    const ws = FakeWS.last;
+    ws.readyState = 1;
+    ws.fire("open");
+
+    const badge = document.querySelector("[data-chat-badge]");
+    expect(badge.hasAttribute("hidden")).toBe(true);
+
+    window.XOGalaxy.chat.setVisible(false);
+    ws.fire("message", { data: JSON.stringify({ type: "message", message: { id: 1, nickname: "Ana", body: "hola", createdAt: 1 } }) });
+    ws.fire("message", { data: JSON.stringify({ type: "message", message: { id: 2, nickname: "Ana", body: "otra", createdAt: 2 } }) });
+
+    expect(badge.hasAttribute("hidden")).toBe(false);
+    expect(badge.textContent).toBe("2");
+
+    window.XOGalaxy.chat.setVisible(true);
+    expect(badge.hasAttribute("hidden")).toBe(true);
+
+    ws.fire("message", { data: JSON.stringify({ type: "message", message: { id: 3, nickname: "Ana", body: "vista", createdAt: 3 } }) });
+    expect(badge.hasAttribute("hidden")).toBe(true);
+  });
+
+  it("no acumula no-leídos con el chat visible", () => {
+    document.body.innerHTML =
+      '<a class="nav-link" href="#chat">Chat<span class="nav-badge" data-chat-badge hidden>0</span></a>' +
+      '<div id="chat-app" data-room="general"></div>';
+    window.XOGalaxy.chat.init();
+    const ws = FakeWS.last;
+    ws.readyState = 1;
+    ws.fire("open");
+
+    const badge = document.querySelector("[data-chat-badge]");
+    ws.fire("message", { data: JSON.stringify({ type: "message", message: { id: 1, nickname: "Ana", body: "hola", createdAt: 1 } }) });
+    expect(badge.hasAttribute("hidden")).toBe(true);
+  });
 });
