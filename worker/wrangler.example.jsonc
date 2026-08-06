@@ -1,0 +1,37 @@
+{
+  // Configuración de ejemplo (código 100% público, sin secretos).
+  // Copiar a wrangler.jsonc y completar los IDs reales:
+  //   npx wrangler kv namespace create XOGALAXY_KV
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "backend",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-06",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true
+  },
+  "kv_namespaces": [
+    {
+      "binding": "XOGALAXY_KV",
+      "id": "PONER_ID_DEL_NAMESPACE"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "STATS",
+        "class_name": "Stats"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["Stats"]
+    }
+  ],
+  "vars": {
+    // Origenes permitidos (CORS + validación). Extensible a dominios futuros.
+    "ALLOWED_ORIGINS": "https://xogalax.blogspot.com,https://xogalaxy.pages.dev"
+  }
+}

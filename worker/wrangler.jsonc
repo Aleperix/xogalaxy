@@ -1,0 +1,33 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "backend",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-06",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true
+  },
+  "kv_namespaces": [
+    {
+      "binding": "XOGALAXY_KV",
+      "id": "fec71c8f31c7405a9cf6e36715026c2c"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "STATS",
+        "class_name": "Stats"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["Stats"]
+    }
+  ],
+  "vars": {
+    "ALLOWED_ORIGINS": "https://xogalax.blogspot.com,https://xogalaxy.pages.dev"
+  }
+}
