@@ -75,7 +75,10 @@ function normalize(s) {
 
 async function run() {
   if (!existsSync(postPath)) fail(`no existe el HTML del post: ${postPath}`);
-  const local = normalize(readFileSync(postPath, "utf8"));
+  const full = readFileSync(postPath, "utf8");
+  const MARK = '<div class="tbr-post">';
+  const idx = full.indexOf(MARK);
+  const local = normalize(idx === -1 ? full : full.slice(idx));
   const creds = readCreds();
   const token = await refreshAccessToken(creds);
 
