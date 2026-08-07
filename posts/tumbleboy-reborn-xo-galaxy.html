@@ -77,7 +77,7 @@
     .tbr-acc summary:hover{color:var(--signal,#a8ff60)}
     .tbr-acc .tbr-acc-date{font-family:var(--font-data,"JetBrains Mono"),monospace;font-size:11px;color:var(--mute,#7c8ba0);margin-left:auto}
     .tbr-acc .tbr-acc-body{padding:2px 16px 14px;font-size:14px}
-    .tbr-acc .tbr-acc-body h4{font-size:13px;margin:14px 0 6px}
+    .tbr-acc .tbr-acc-body h2,.tbr-acc .tbr-acc-body h3,.tbr-acc .tbr-acc-body h4{font-size:13px;margin:14px 0 6px;color:var(--ceibal,#ff8a3d)}
     .tbr-acc .tbr-acc-body ul{margin:4px 0}
     .tbr-acc .tbr-acc-body a{word-break:break-all}
     .tbr-caption{margin:8px 0 4px;color:var(--mute,#7c8ba0);font-family:var(--font-data,"JetBrains Mono"),monospace;font-size:12px;text-align:center}
@@ -264,8 +264,8 @@
       while (i < lines.length) {
         var t = lines[i].trim();
         if (!t) { flush(); i++; continue; }
-        var h = /^(#{1,4})\s+(.*)$/.exec(t);
-        if (h) { flush(); out.push("<h4>" + inline(h[2]) + "</h4>"); i++; continue; }
+        var h = /^(#{1,6})\s+(.*)$/.exec(t);
+        if (h) { flush(); var lvl = Math.min(6, h[1].length + 1); out.push("<h" + lvl + ">" + inline(h[2]) + "</h" + lvl + ">"); i++; continue; }
         if (t.indexOf("- ") === 0 || t.indexOf("* ") === 0) {
           flush();
           var lis = [];
