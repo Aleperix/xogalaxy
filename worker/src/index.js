@@ -53,6 +53,8 @@ export default {
           return handleVisits(request, env, origin);
         case "/auth/verify":
           return handleAuthVerify(request, env, origin);
+        case "/auth/config":
+          return handleAuthConfig(env, origin);
         case "/chat/ws":
           return handleChatWs(request, env, origin);
         case "/chat/history":
@@ -110,6 +112,14 @@ export default {
 };
 
 // ---- auth ----
+
+async function handleAuthConfig(env, origin) {
+  return json(
+    { clientId: env.GOOGLE_CLIENT_ID || "" },
+    200,
+    Object.assign({}, cors(origin), { "Cache-Control": "public, max-age=3600" })
+  );
+}
 
 async function handleAuthVerify(request, env, origin) {
   if (request.method !== "POST") {

@@ -67,6 +67,9 @@
       return { sub: d.sub, name: d.name, picture: d.picture, isOwner: !!d.isOwner };
     });
   }
+  function authConfig() {
+    return get("/auth/config");
+  }
 
   // ---- comentarios ----
   function commentsList(postId) {
@@ -100,6 +103,7 @@
     chatHistory: chatHistory,
     chatSend: chatSend,
     authVerify: authVerify,
+    authConfig: authConfig,
     comments: {
       list: commentsList,
       count: commentsCount,

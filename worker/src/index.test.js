@@ -60,6 +60,14 @@ describe("Worker routes", () => {
     expect(res.headers.get("Access-Control-Allow-Origin")).toBe("https://xogalaxy.pages.dev");
   });
 
+  it("GET /auth/config expone el client id sin secrets y cachea 1h", async () => {
+    const res = await exports.default.fetch("http://xogalaxy-backend.test/auth/config");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Cache-Control")).toContain("max-age=3600");
+    const data = await res.json();
+    expect(data.clientId).toBe("test-client-id");
+  });
+
   it("404 for unknown paths", async () => {
     const res = await exports.default.fetch("http://xogalaxy-backend.test/nope");
     expect(res.status).toBe(404);

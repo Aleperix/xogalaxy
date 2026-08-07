@@ -1,23 +1,26 @@
 /**
  * XO Galaxy — chunk auth.
- * Login con Google Identity Services (GIS). El ID token se guarda solo en
- * memoria (nada de localStorage); el perfil verificado llega del backend
- * (/auth/verify). Se corre X.hooks.run("auth") tras login/logout para que
- * comentarios y chat refresquen su identidad.
+ * Login con Google Identity Services (GIS). El client id se resuelve de forma
+ * perezosa: primero window.XOGALAXY_CONFIG.googleClientId, luego el cache de
+ * sessionStorage y por último GET /auth/config del backend (sin secretos).
+ * El ID token se guarda solo en memoria (nada de localStorage); el perfil
+ * verificado llega del backend (/auth/verify). Se corre X.hooks.run("auth")
+ * tras login/logout para que comentarios y chat refresquen su identidad.
  */
 (function (global) {
   "use strict";
 
   var X = (global.XOGalaxy = global.XOGalaxy || {});
-  var config = global.XOGALAXY_CONFIG || {};
-  var CLIENT_ID = config.googleClientId || "";
+  var STORAGE_KEY = "xogalaxy_client_id";
 
+  var CLIENT_ID = "";
   var token = null;
   var profile = null;
   var initialized = false;
   var loading = false;
   var pendingButtons = [];
   var listeners = [];
+  var ensuring = null;
 
   function emit() {
     X.hooks.run("auth");
@@ -47,8 +50,58 @@
       });
   }
 
+  function readConfigId() {
+    var c = global.XOGALAXY_CONFIG || {};
+    return c.googleClientId || "";
+  }
+
+  function readCachedId() {
+    try {
+      return global.sessionStorage.getItem(STORAGE_KEY) || "";
+    } catch (err) {
+      return "";
+    }
+  }
+
+  function cacheId(id) {
+    try {
+      if (id) global.sessionStorage.setItem(STORAGE_KEY, id);
+      else global.sessionStorage.removeItem(STORAGE_KEY);
+    } catch (err) {}
+  }
+
+  function ensureClientId() {
+    if (CLIENT_ID) return Promise.resolve(CLIENT_ID);
+    if (ensuring) return ensuring;
+    var fromConfig = readConfigId();
+    if (fromConfig) {
+      CLIENT_ID = fromConfig;
+      return Promise.resolve(CLIENT_ID);
+    }
+    var fromCache = readCachedId();
+    if (fromCache) {
+      CLIENT_ID = fromCache;
+      return Promise.resolve(CLIENT_ID);
+    }
+    ensuring = X.api
+      .authConfig()
+      .then(function (d) {
+        CLIENT_ID = (d && d.clientId) || "";
+        cacheId(CLIENT_ID);
+        return CLIENT_ID;
+      })
+      .catch(function () {
+        CLIENT_ID = "";
+        return "";
+      })
+      .finally(function () {
+        ensuring = null;
+      });
+    return ensuring;
+  }
+
   function initGoogle() {
-    if (!global.google || !global.google.accounts) return;
+    if (!global.google || !global.google.accounts || !CLIENT_ID) return;
     initialized = true;
     global.google.accounts.id.initialize({
       client_id: CLIENT_ID,
@@ -56,14 +109,15 @@
       auto_select: false,
       cancel_on_tap_outside: true,
     });
-    pendingButtons.forEach(function (btn) {
-      renderButton(btn);
-    });
+    var btns = pendingButtons;
     pendingButtons = [];
+    btns.forEach(function (el) {
+      renderGoogleButton(el);
+    });
   }
 
   function loadScript() {
-    if (loading) return;
+    if (loading || initialized || !CLIENT_ID) return;
     loading = true;
     var s = document.createElement("script");
     s.src = "https://accounts.google.com/gsi/client";
@@ -83,13 +137,14 @@
     }
   }
 
-  function renderButton(el) {
+  function ensureReady() {
+    return ensureClientId().then(function (id) {
+      if (id) loadScript();
+    });
+  }
+
+  function renderGoogleButton(el) {
     if (!el) return;
-    if (!initialized) {
-      pendingButtons.push(el);
-      loadScript();
-      return;
-    }
     try {
       global.google.accounts.id.renderButton(el, {
         theme: "outline",
@@ -100,14 +155,24 @@
     } catch (err) {}
   }
 
-  function login() {
-    if (!initialized) {
-      loadScript();
+  function renderButton(el) {
+    if (!el) return;
+    if (initialized && CLIENT_ID) {
+      renderGoogleButton(el);
       return;
     }
-    try {
-      global.google.accounts.id.prompt(handleCredential);
-    } catch (err) {}
+    pendingButtons.push(el);
+    if (CLIENT_ID) loadScript();
+    else ensureReady();
+  }
+
+  function login() {
+    ensureReady().then(function () {
+      if (!initialized) return;
+      try {
+        global.google.accounts.id.prompt(handleCredential);
+      } catch (err) {}
+    });
   }
 
   function logout() {
@@ -121,8 +186,7 @@
   }
 
   function init() {
-    if (!CLIENT_ID) return;
-    loadScript();
+    ensureReady();
   }
 
   function onAuthChange(fn) {
@@ -154,7 +218,9 @@
     },
     _handleCredential: handleCredential,
     _setClientId: function (id) {
-      CLIENT_ID = id;
+      CLIENT_ID = id || "";
+      ensuring = null;
+      cacheId(CLIENT_ID);
     },
   };
 })(window);

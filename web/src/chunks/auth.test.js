@@ -17,9 +17,40 @@ describe("chunk auth", () => {
     window.google = undefined;
   });
 
-  it("sin client id, init no carga el script GSI", () => {
+  it("sin client id, init no carga el script GSI", async () => {
+    vi.stubGlobal("fetch", async (url) => {
+      expect(String(url)).toContain("/auth/config");
+      return new Response(JSON.stringify({ clientId: "" }), { status: 200 });
+    });
     window.XOGalaxy.auth.init();
+    await flush();
+    await flush();
     expect(document.querySelector('script[src*="accounts.google.com/gsi/client"]')).toBeNull();
+  });
+
+  it("fetch a /auth/config resuelve el client id y no vuelve a pedirlo en la sesión", async () => {
+    let hits = 0;
+    vi.stubGlobal("fetch", async (url) => {
+      const u = new URL(url);
+      if (u.pathname === "/auth/config") {
+        hits++;
+        return new Response(JSON.stringify({ clientId: "cid-remote" }), { status: 200 });
+      }
+      return new Response("{}", { status: 200 });
+    });
+    window.XOGalaxy.auth.init();
+    await flush();
+    await flush();
+    expect(hits).toBe(1);
+
+    const slot = document.createElement("div");
+    document.body.appendChild(slot);
+    window.google = {
+      accounts: { id: { initialize() {}, renderButton() {}, prompt() {} } },
+    };
+    window.XOGalaxy.auth.renderButton(slot);
+    await flush();
+    expect(hits).toBe(1);
   });
 
   it("renderButton carga GSI y al cargar inicializa y pinta el botón", () => {

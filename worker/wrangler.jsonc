@@ -17,7 +17,7 @@
     {
       "binding": "DB",
       "database_name": "xogalaxy",
-      "database_id": "REPLACE_ME_RUN_wrangler_d1_create"
+      "database_id": "eb3ca824-1e7b-4acc-9144-a24fee35d2d8"
     }
   ],
   "durable_objects": {
@@ -44,8 +44,8 @@
   ],
   "vars": {
     "ALLOWED_ORIGINS": "https://xogalax.blogspot.com,https://xogalaxy.pages.dev",
-    "GOOGLE_CLIENT_ID": "REPLACE_ME_CREATE_EN_GOOGLE_CLOUD_CONSOLE.apps.googleusercontent.com",
-    "OWNER_SUBS": "REPLACE_ME_GOOGLE_SUB_DEL_OWNER",
+    "GOOGLE_CLIENT_ID": "876770060285-9t4e4oehkbpkvaqrfpt6fr1a2cdl8649.apps.googleusercontent.com",
+    "OWNER_SUBS": "107284810985445490995",
     "XOGALAXY_GH_REPO": "aleperix/xogalaxy-backup"
   },
   "triggers": {
