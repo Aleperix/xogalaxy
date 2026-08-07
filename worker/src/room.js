@@ -1,4 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
+import { Auth } from "./auth.js";
 
 const NICK_MAX = 32;
 const BODY_MAX = 1000;
@@ -32,6 +33,14 @@ export class Room extends DurableObject {
         );
         CREATE INDEX IF NOT EXISTS idx_messages_room ON messages(room, id);
         INSERT INTO _sql_schema_migrations (id) VALUES (1);
+      `);
+    }
+    if (version < 2) {
+      sql.exec(`
+        ALTER TABLE messages ADD COLUMN author_sub TEXT;
+        ALTER TABLE messages ADD COLUMN author_name TEXT;
+        ALTER TABLE messages ADD COLUMN author_pic TEXT;
+        INSERT INTO _sql_schema_migrations (id) VALUES (2);
       `);
     }
   }
@@ -73,7 +82,8 @@ export class Room extends DurableObject {
     const body = String(data.body || "").trim().slice(0, BODY_MAX);
     if (!body) return;
 
-    await this.sendMessage(room, nickname, body);
+    const author = await this.verifiedAuthor(data.token);
+    await this.sendMessage(room, nickname, body, author);
   }
 
   async webSocketClose(ws, code, reason, wasClean) {
@@ -89,44 +99,82 @@ export class Room extends DurableObject {
   history(room, limit = 50) {
     const rows = this.ctx.storage.sql
       .exec(
-        `SELECT id, nickname, body, created_at FROM messages
+        `SELECT id, nickname, body, created_at, author_sub, author_name, author_pic FROM messages
          WHERE room = ? AND deleted = 0 ORDER BY id DESC LIMIT ?`,
         room,
         Math.min(limit, 200)
       )
       .toArray()
       .reverse();
+    return rows.map(this.rowToMessage);
+  }
+
+  rowToMessage(r) {
+    return {
+      id: r.id,
+      nickname: r.nickname,
+      body: r.body,
+      createdAt: r.created_at,
+      author: r.author_sub
+        ? { sub: r.author_sub, name: r.author_name || r.nickname, picture: r.author_pic || null }
+        : null,
+    };
+  }
+
+  async postMessage(room, nickname, body, author = null) {
+    const res = this.ctx.storage.sql
+      .exec(
+        `INSERT INTO messages (room, nickname, body, created_at, author_sub, author_name, author_pic)
+         VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id, nickname, body, created_at, author_sub, author_name, author_pic`,
+        room,
+        nickname,
+        body,
+        Date.now(),
+        author ? author.sub : null,
+        author ? author.name : null,
+        author ? author.picture : null
+      )
+      .one();
+    return this.rowToMessage(res);
+  }
+
+  async sendMessage(room, nickname, body, author = null) {
+    const msg = await this.postMessage(room, nickname, body, author);
+    this.broadcast(room, { type: "message", message: msg });
+    return msg;
+  }
+
+  async verifiedAuthor(token) {
+    if (!token) return null;
+    try {
+      if (!this.auth) this.auth = new Auth(this.env);
+      const profile = await this.auth.verify(token, this.env.GOOGLE_CLIENT_ID);
+      return { sub: profile.sub, name: profile.name || "", picture: profile.picture || null };
+    } catch (err) {
+      console.error("chat auth error:", err);
+      return null;
+    }
+  }
+
+  export(room, limit = 5000) {
+    const rows = this.ctx.storage.sql
+      .exec(
+        `SELECT id, nickname, body, created_at, deleted, author_sub, author_name, author_pic FROM messages
+         WHERE room = ? ORDER BY id ASC LIMIT ?`,
+        room,
+        limit
+      )
+      .toArray();
     return rows.map((r) => ({
       id: r.id,
       nickname: r.nickname,
       body: r.body,
       createdAt: r.created_at,
+      deleted: r.deleted === 1,
+      author: r.author_sub
+        ? { sub: r.author_sub, name: r.author_name || r.nickname, picture: r.author_pic || null }
+        : null,
     }));
-  }
-
-  async postMessage(room, nickname, body) {
-    const res = this.ctx.storage.sql
-      .exec(
-        `INSERT INTO messages (room, nickname, body, created_at)
-         VALUES (?, ?, ?, ?) RETURNING id, nickname, body, created_at`,
-        room,
-        nickname,
-        body,
-        Date.now()
-      )
-      .one();
-    return {
-      id: res.id,
-      nickname: res.nickname,
-      body: res.body,
-      createdAt: res.created_at,
-    };
-  }
-
-  async sendMessage(room, nickname, body) {
-    const msg = await this.postMessage(room, nickname, body);
-    this.broadcast(room, { type: "message", message: msg });
-    return msg;
   }
 
   async modDelete(room, id) {

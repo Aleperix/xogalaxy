@@ -32,11 +32,12 @@ describe("scheduled (Wayback nightly)", () => {
 
     const results = await exports.default.scheduled({ cron: "17 4 * * *" }, {});
 
-    expect(results).toEqual([
+    expect(results.wayback).toEqual([
       { url: "https://xogalax.blogspot.com/", status: 200, ok: true },
       { url: "https://xogalax.blogspot.com/2026/08/post-uno.html", status: 200, ok: true },
       { url: "https://xogalax.blogspot.com/2026/08/post-dos.html", status: 200, ok: true },
     ]);
+    expect(results.backup.ok).toBe(true);
 
     const waybackCalls = spy.mock.calls
       .filter(([input]) => new URL(input).origin === "https://web.archive.org")
@@ -62,7 +63,7 @@ describe("scheduled (Wayback nightly)", () => {
     });
 
     const results = await exports.default.scheduled({ cron: "17 4 * * *" }, {});
-    expect(results).toEqual([
+    expect(results.wayback).toEqual([
       { url: "https://xogalax.blogspot.com/", status: 200, ok: true },
     ]);
   });

@@ -23,8 +23,8 @@ describe("chunk stats", () => {
       if (u.pathname === "/feeds/posts/summary") {
         return new Response(JSON.stringify({ feed: { openSearch$totalResults: { $t: "3" } } }), { status: 200 });
       }
-      if (u.pathname === "/feeds/comments/default") {
-        return new Response(JSON.stringify({ feed: { openSearch$totalResults: { $t: "5" } } }), { status: 200 });
+      if (u.pathname === "/comments/total") {
+        return new Response(JSON.stringify({ total: 5 }), { status: 200 });
       }
       if (u.pathname === "/followers") {
         return new Response(JSON.stringify({ count: 12 }), { status: 200 });

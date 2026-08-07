@@ -28,10 +28,16 @@
     var room = (app.getAttribute("data-room") || "general").slice(0, 64);
     var defaultNick = app.getAttribute("data-nick") || "Anónimo";
     var nickname = null;
+    var customNick = null;
+    function currentProfileName() {
+      var p = X.auth.getProfile();
+      return (p && p.name && p.name.trim()) || null;
+    }
     try {
-      nickname = localStorage.getItem(NICK_KEY) || defaultNick;
+      customNick = localStorage.getItem(NICK_KEY);
+      nickname = customNick || currentProfileName() || defaultNick;
     } catch (err) {
-      nickname = defaultNick;
+      nickname = currentProfileName() || defaultNick;
     }
 
     var root = utils.el("div", "xogalaxy-chat");
@@ -139,7 +145,17 @@
     function msgEl(message) {
       var li = utils.el("li", "chat-msg");
       li.setAttribute("data-id", String(message.id));
-      var meta = utils.el("span", "chat-msg-meta", message.nickname);
+      var author = message.author;
+      if (author && author.picture) {
+        var img = utils.el("img", "chat-msg-avatar");
+        img.src = author.picture;
+        img.alt = author.name || "";
+        img.width = 28;
+        img.height = 28;
+        li.appendChild(img);
+      }
+      var meta = utils.el("span", "chat-msg-meta", (author && author.name) || message.nickname);
+      if (author && author.sub) meta.classList.add("chat-msg-verified");
       var body = utils.el("span", "chat-msg-body", message.body);
       li.appendChild(meta);
       li.appendChild(body);
@@ -241,11 +257,12 @@
     }
 
     function send(body) {
+      var token = X.auth.getToken();
       if (online && ws && ws.readyState === 1) {
-        ws.send(JSON.stringify({ type: "chat", body: body }));
+        ws.send(JSON.stringify({ type: "chat", body: body, token: token }));
         return Promise.resolve();
       }
-      return api.chatSend(room, nickname, body).then(function (d) {
+      return api.chatSend(room, nickname, body, token).then(function (d) {
         if (d && d.message) append(d.message);
       });
     }
@@ -263,6 +280,7 @@
     nickInput.addEventListener("change", function () {
       var value = nickInput.value.trim().slice(0, 32) || defaultNick;
       nickInput.value = value;
+      customNick = value;
       try {
         localStorage.setItem(NICK_KEY, value);
       } catch (err) {}
@@ -277,6 +295,26 @@
           closed = false;
           retries = 0;
           global.setTimeout(connect, 200);
+        }
+      }
+    });
+
+    var unbindAuth = X.auth.onAuthChange(function () {
+      if (!customNick) {
+        var name = currentProfileName();
+        if (name && name !== nickname) {
+          nickname = name;
+          nickInput.value = name;
+          if (ws) {
+            var old = ws;
+            ws = null;
+            try {
+              old.close();
+            } catch (err) {}
+            closed = false;
+            retries = 0;
+            global.setTimeout(connect, 200);
+          }
         }
       }
     });
@@ -320,6 +358,10 @@
       setVisible: setVisible,
       close: function () {
         closed = true;
+        if (unbindAuth) {
+          unbindAuth();
+          unbindAuth = null;
+        }
         if (ws) {
           try {
             ws.close();

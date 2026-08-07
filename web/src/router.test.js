@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import "./core.js";
 import "./api.js";
+import "./chunks/auth.js";
+import "./chunks/comments.js";
 import "./router.js";
 
 describe("router SPA", () => {
@@ -63,33 +65,34 @@ describe("router SPA", () => {
     spy.mockRestore();
   });
 
-  it("re-ejecuta los scripts de section#comments tras navegar por SPA", async () => {
+  it("tras navegar por SPA, el hook swap monta los comentarios propios", async () => {
     const { fetch } = globalThis;
     vi.stubGlobal("fetch", async (url) => {
-      if (String(url).includes("/con-comentarios")) {
+      const u = new URL(url, "http://localhost");
+      if (u.pathname === "/con-comentarios.html") {
         return new Response(
           "<html><head><title>Con comentarios</title></head><body><main class=\"main-layout\">" +
-            "<section id=\"comments\"><script>BLOG_CMT_createIframe('relay');</script></section>" +
+            "<section id=\"comments\" data-post-id=\"p1\"><div id=\"comments-app\"></div></section>" +
             "</main></body></html>",
           { status: 200, headers: { "Content-Type": "text/html" } }
         );
       }
+      if (u.pathname === "/comments") {
+        return new Response(JSON.stringify({ postId: "p1", count: 2 }), { status: 200 });
+      }
       return fetch(url);
     });
-    const createSpy = vi.spyOn(document, "createElement");
 
     await window.XOGalaxy.router.navigate("/con-comentarios.html");
     await flush();
 
-    const scriptClones = createSpy.mock.calls.filter((c) => c[0] === "script");
-    expect(scriptClones).toHaveLength(1);
-    const replaced = document.querySelector("section#comments script");
-    expect(replaced.textContent).toContain("BLOG_CMT_createIframe");
+    const mounted = document.querySelector("section#comments[data-post-id='p1'] .xogalaxy-comments");
+    expect(mounted).toBeTruthy();
+    expect(document.querySelector("section#comments .cmts-toggle").textContent).toContain("2");
     vi.unstubAllGlobals();
-    createSpy.mockRestore();
   });
 
-  it("no re-ejecuta scripts fuera de section#comments", async () => {
+  it("no re-ejecuta scripts del HTML al navegar por SPA", async () => {
     const { fetch } = globalThis;
     vi.stubGlobal("fetch", async (url) => {
       if (String(url).includes("/con-otro-script")) {

@@ -15,9 +15,11 @@
     X.core.initIcons();
     X.core.initFeedButton();
     X.core.initShare();
+    X.auth.init();
     X.router.init();
     X.stats.init();
     X.chat.init();
+    X.comments.init();
   }
 
   if (document.readyState === "loading") {

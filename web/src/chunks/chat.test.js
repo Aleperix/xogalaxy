@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import "../core.js";
 import "../api.js";
+import "./auth.js";
 import "./chat.js";
 
 class FakeWS {
@@ -104,7 +105,7 @@ describe("chunk chat", () => {
     chatApp().dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
 
     expect(ws.sent).toHaveLength(1);
-    expect(JSON.parse(ws.sent[0])).toEqual({ type: "chat", body: "mensaje de prueba" });
+    expect(JSON.parse(ws.sent[0])).toEqual({ type: "chat", body: "mensaje de prueba", token: null });
     expect(input.value).toBe("");
   });
 

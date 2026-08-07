@@ -26,13 +26,10 @@
   }
 
   function loadComments() {
-    fetch("/feeds/comments/default?alt=json&max-results=0")
-      .then(function (r) {
-        return r.json();
-      })
-      .then(function (data) {
-        var total = parseInt(data.feed && data.feed.openSearch$totalResults && data.feed.openSearch$totalResults.$t, 10);
-        utils.animateStat(utils.qs("#stat-comments"), total);
+    api.comments
+      .total()
+      .then(function (d) {
+        utils.animateStat(utils.qs("#stat-comments"), parseInt(d.total, 10));
       })
       .catch(function () {
         var el = utils.qs("#stat-comments");

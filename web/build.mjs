@@ -8,7 +8,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
-const ORDER = ["src/core.js", "src/api.js", "src/router.js", "src/chunks/stats.js", "src/chunks/chat.js", "src/app.js"];
+const ORDER = ["src/core.js", "src/api.js", "src/router.js", "src/chunks/auth.js", "src/chunks/stats.js", "src/chunks/chat.js", "src/chunks/comments.js", "src/app.js"];
 
 const parts = ORDER.map((f) => readFileSync(join(ROOT, f), "utf8").trim());
 const banner = "/* XO Galaxy app.js — generado por web/build.mjs. No editar a mano. */\n";
