@@ -49,21 +49,6 @@
     }
     </script>
   </b:if>
-  <b:if cond='data:blog.pageType == "item"'>
-    <script type='application/ld+json'>
-    {
-      "@context": "https://schema.org",
-      "@type": "BlogPosting",
-      "mainEntityOfPage": {"@type": "WebPage", "@id": "<data:post.url.canonical/>"},
-      "headline": "<data:post.title/>",
-      "image": ["<data:post.featuredImage.image/>"],
-      "datePublished": "<data:post.date.iso/>",
-      "author": {"@type": "Person", "name": "<data:post.author.name/>", "url": "<data:post.author.profileUrl/>"},
-      "publisher": {"@type": "Organization", "name": "XO Galaxy", "logo": {"@type": "ImageObject", "url": "https://cdn.jsdelivr.net/gh/Aleperix/xogalaxy@main/assets/favicon.png"}},
-      "description": "Todo lo que buscás para tu laptop XO: juegos, actividades y trucos para XO 1.0, XO 1.5, Magallanes y Positivo BGH — hecho por la comunidad, para la comunidad."
-    }
-    </script>
-  </b:if>
   
   <b:if cond='data:blog.metaDescription'>
     <meta expr:content='data:blog.metaDescription' name='description'/>
@@ -71,7 +56,7 @@
     <meta content='Todo lo que buscás para tu laptop XO: juegos, actividades y trucos para XO 1.0, XO 1.5, Magallanes y Positivo BGH — hecho por la comunidad, para la comunidad.' name='description'/>
   </b:if>
   <b:if cond='data:blog.pageType == "item"'>
-    <title><data:post.title/> - <data:blog.title/></title>
+    <title><data:blog.pageName/> - <data:blog.title/></title>
   <b:else/>
     <title><data:blog.pageTitle/></title>
   </b:if>
@@ -303,6 +288,21 @@
               <b:if cond='data:view.isSingleItem'>
                 <b:loop values='data:posts' var='post'>
   <article class='post post-single'>
+    <b:if cond='data:blog.pageType == "item"'>
+    <script type='application/ld+json'>
+    {
+      "@context": "https://schema.org",
+      "@type": "BlogPosting",
+      "mainEntityOfPage": {"@type": "WebPage", "@id": "<data:post.url.canonical/>"},
+      "headline": "<data:post.title/>",
+      "image": ["<data:post.featuredImage.image/>"],
+      "datePublished": "<data:post.date.iso/>",
+      "author": {"@type": "Person", "name": "<data:post.author.name/>", "url": "<data:post.author.profileUrl/>"},
+      "publisher": {"@type": "Organization", "name": "XO Galaxy", "logo": {"@type": "ImageObject", "url": "https://cdn.jsdelivr.net/gh/Aleperix/xogalaxy@main/assets/favicon.png"}},
+      "description": "Todo lo que busc\u00e1s para tu laptop XO: juegos, actividades y trucos para XO 1.0, XO 1.5, Magallanes y Positivo BGH \u2014 hecho por la comunidad, para la comunidad."
+    }
+    </script>
+    </b:if>
     <div class='post-content'>
       <div class='post-meta'>
         <time expr:datetime='data:post.date.iso8601'><data:post.date/></time>
