@@ -14,6 +14,7 @@
   var BACKEND = X.config.backend;
   var WS_BASE = BACKEND.replace(/^https:/, "wss:").replace(/^http:/, "ws:");
   var NICK_KEY = "xogalaxy.nick";
+  var LAST_READ_KEY = "xogalaxy.chat.lastRead";
   var MAX_MSGS = 200;
   var MAX_RETRY = 15000;
   var ONLINE_CLASS = "chat-online";
@@ -62,7 +63,26 @@
     var closed = false;
     var online = false;
     var unread = 0;
-    var visible = true;
+    var visible = false;
+    var lastRead = readLastRead();
+
+    function saveLastRead(ts) {
+      lastRead = ts;
+      try {
+        localStorage.setItem(LAST_READ_KEY, String(ts));
+      } catch (err) {}
+    }
+
+    function readLastRead() {
+      try {
+        var raw = localStorage.getItem(LAST_READ_KEY);
+        if (raw === null) return null;
+        var n = parseInt(raw, 10);
+        return isNaN(n) ? null : n;
+      } catch (err) {
+        return null;
+      }
+    }
 
     function renderBadge() {
       var badge = utils.qs(BADGE_SELECTOR);
@@ -81,15 +101,33 @@
       renderBadge();
     }
 
-    function bumpUnread() {
-      if (visible) return;
+    function onIncoming(message) {
+      if (visible) {
+        saveLastRead(message.createdAt);
+        clearUnread();
+        return;
+      }
       unread += 1;
       renderBadge();
     }
 
     function setVisible(v) {
       visible = !!v;
-      if (visible) clearUnread();
+      if (visible) {
+        saveLastRead(Date.now());
+        clearUnread();
+      }
+    }
+
+    function isInViewport() {
+      var rect = app.getBoundingClientRect();
+      if (!rect || (rect.width === 0 && rect.height === 0)) return false;
+      return (
+        rect.top < (global.innerHeight || 0) &&
+        rect.bottom > 0 &&
+        rect.left < (global.innerWidth || 0) &&
+        rect.right > 0
+      );
     }
 
     function setStatus(text, cls) {
@@ -135,10 +173,26 @@
       }
       if (data.type === "history") {
         list.innerHTML = "";
-        (data.messages || []).forEach(append);
+        var messages = data.messages || [];
+        messages.forEach(append);
+        var maxTs = messages.reduce(function (m, x) {
+          return x.createdAt > m ? x.createdAt : m;
+        }, 0);
+        if (lastRead === null) {
+          saveLastRead(maxTs || Date.now());
+          unread = 0;
+        } else if (visible) {
+          saveLastRead(Math.max(lastRead, maxTs));
+          unread = 0;
+        } else {
+          unread = messages.filter(function (x) {
+            return x.createdAt > lastRead;
+          }).length;
+        }
+        renderBadge();
       } else if (data.type === "message") {
         append(data.message);
-        bumpUnread();
+        onIncoming(data.message);
       } else if (data.type === "deleted") {
         removeMessage(data.id);
       }
@@ -227,8 +281,12 @@
       }
     });
 
-    root.addEventListener("focusin", clearUnread);
-    root.addEventListener("click", clearUnread);
+    root.addEventListener("focusin", function () {
+      setVisible(true);
+    });
+    root.addEventListener("click", function () {
+      setVisible(true);
+    });
 
     function onDocClick(e) {
       var link = e.target.closest ? e.target.closest('.nav-link[href="#chat"]') : null;
@@ -237,14 +295,23 @@
     }
     document.addEventListener("click", onDocClick);
 
+    function onViewportChange() {
+      setVisible(isInViewport());
+    }
+
     var observer = null;
-    if (typeof global.IntersectionObserver === "function") {
+    var useFallback = typeof global.IntersectionObserver !== "function";
+    if (!useFallback) {
       observer = new global.IntersectionObserver(function (entries) {
         entries.forEach(function (entry) {
           setVisible(entry.isIntersecting);
         });
       });
       observer.observe(app);
+    } else {
+      global.addEventListener("scroll", onViewportChange);
+      global.addEventListener("resize", onViewportChange);
+      onViewportChange();
     }
 
     connect();
@@ -263,6 +330,10 @@
           try {
             observer.disconnect();
           } catch (err) {}
+        }
+        if (useFallback) {
+          global.removeEventListener("scroll", onViewportChange);
+          global.removeEventListener("resize", onViewportChange);
         }
       },
     };

@@ -41,8 +41,10 @@ function chatApp() {
 describe("chunk chat", () => {
   beforeEach(() => {
     document.body.innerHTML = '<div id="chat-app" data-room="general"></div>';
+    localStorage.clear();
     FakeWS.reset();
     window.WebSocket = FakeWS;
+    window.IntersectionObserver = undefined;
     window.XOGalaxy.chat.reset();
   });
 
@@ -155,7 +157,6 @@ describe("chunk chat", () => {
     const badge = document.querySelector("[data-chat-badge]");
     expect(badge.hasAttribute("hidden")).toBe(true);
 
-    window.XOGalaxy.chat.setVisible(false);
     ws.fire("message", { data: JSON.stringify({ type: "message", message: { id: 1, nickname: "Ana", body: "hola", createdAt: 1 } }) });
     ws.fire("message", { data: JSON.stringify({ type: "message", message: { id: 2, nickname: "Ana", body: "otra", createdAt: 2 } }) });
 
@@ -173,6 +174,96 @@ describe("chunk chat", () => {
     document.body.innerHTML =
       '<a class="nav-link" href="#chat">Chat<span class="nav-badge" data-chat-badge hidden>0</span></a>' +
       '<div id="chat-app" data-room="general"></div>';
+    window.XOGalaxy.chat.init();
+    window.XOGalaxy.chat.setVisible(true);
+    const ws = FakeWS.last;
+    ws.readyState = 1;
+    ws.fire("open");
+
+    const badge = document.querySelector("[data-chat-badge]");
+    ws.fire("message", { data: JSON.stringify({ type: "message", message: { id: 1, nickname: "Ana", body: "hola", createdAt: 1 } }) });
+    expect(badge.hasAttribute("hidden")).toBe(true);
+  });
+
+  it("cuenta la historia más reciente que el último-leído guardado", () => {
+    document.body.innerHTML =
+      '<a class="nav-link" href="#chat">Chat<span class="nav-badge" data-chat-badge hidden>0</span></a>' +
+      '<div id="chat-app" data-room="general"></div>';
+    localStorage.setItem("xogalaxy.chat.lastRead", "1000");
+    window.XOGalaxy.chat.init();
+    const ws = FakeWS.last;
+    ws.readyState = 1;
+    ws.fire("open");
+
+    const badge = document.querySelector("[data-chat-badge]");
+    ws.fire("message", {
+      data: JSON.stringify({ type: "history", messages: [
+        { id: 1, nickname: "Ana", body: "viejo", createdAt: 900 },
+        { id: 2, nickname: "Beto", body: "nuevo", createdAt: 1500 },
+        { id: 3, nickname: "Beto", body: "otro", createdAt: 2000 },
+      ] }),
+    });
+    expect(badge.hasAttribute("hidden")).toBe(false);
+    expect(badge.textContent).toBe("2");
+
+    ws.fire("message", {
+      data: JSON.stringify({ type: "history", messages: [
+        { id: 1, nickname: "Ana", body: "viejo", createdAt: 900 },
+        { id: 2, nickname: "Beto", body: "nuevo", createdAt: 1500 },
+        { id: 3, nickname: "Beto", body: "otro", createdAt: 2000 },
+      ] }),
+    });
+    expect(badge.textContent).toBe("2");
+  });
+
+  it("sin último-leído guardado no marca la historia previa", () => {
+    document.body.innerHTML =
+      '<a class="nav-link" href="#chat">Chat<span class="nav-badge" data-chat-badge hidden>0</span></a>' +
+      '<div id="chat-app" data-room="general"></div>';
+    window.XOGalaxy.chat.init();
+    const ws = FakeWS.last;
+    ws.readyState = 1;
+    ws.fire("open");
+
+    const badge = document.querySelector("[data-chat-badge]");
+    ws.fire("message", {
+      data: JSON.stringify({ type: "history", messages: [
+        { id: 1, nickname: "Ana", body: "viejo", createdAt: 900 },
+        { id: 2, nickname: "Beto", body: "nuevo", createdAt: 1500 },
+      ] }),
+    });
+    expect(badge.hasAttribute("hidden")).toBe(true);
+
+    ws.fire("message", { data: JSON.stringify({ type: "message", message: { id: 3, nickname: "Beto", body: "fresco", createdAt: 2000 } }) });
+    expect(badge.hasAttribute("hidden")).toBe(false);
+    expect(badge.textContent).toBe("1");
+  });
+
+  it("setVisible(true) persiste el último-leído y limpia el badge", () => {
+    document.body.innerHTML =
+      '<a class="nav-link" href="#chat">Chat<span class="nav-badge" data-chat-badge hidden>0</span></a>' +
+      '<div id="chat-app" data-room="general"></div>';
+    window.XOGalaxy.chat.init();
+    const ws = FakeWS.last;
+    ws.readyState = 1;
+    ws.fire("open");
+
+    const badge = document.querySelector("[data-chat-badge]");
+    ws.fire("message", { data: JSON.stringify({ type: "message", message: { id: 1, nickname: "Ana", body: "hola", createdAt: 1 } }) });
+    expect(badge.hasAttribute("hidden")).toBe(false);
+
+    window.XOGalaxy.chat.setVisible(true);
+    expect(badge.hasAttribute("hidden")).toBe(true);
+    expect(Number(localStorage.getItem("xogalaxy.chat.lastRead"))).toBeGreaterThan(0);
+  });
+
+  it("usa isInViewport como fallback sin IntersectionObserver", () => {
+    document.body.innerHTML =
+      '<a class="nav-link" href="#chat">Chat<span class="nav-badge" data-chat-badge hidden>0</span></a>' +
+      '<div id="chat-app" data-room="general"></div>';
+    const app = document.getElementById("chat-app");
+    app.getBoundingClientRect = () => ({ top: 10, bottom: 110, left: 0, right: 100, width: 100, height: 100 });
+
     window.XOGalaxy.chat.init();
     const ws = FakeWS.last;
     ws.readyState = 1;
