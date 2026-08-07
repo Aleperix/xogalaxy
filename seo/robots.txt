@@ -1,0 +1,16 @@
+User-agent: *
+Allow: /
+
+# Evitar indexar duplicados (búsquedas, etiquetas, feeds, paginación, móvil)
+Disallow: /search
+Disallow: /search/label/
+Disallow: /search?q=
+Disallow: /feeds/
+Disallow: /atom.xml
+Disallow: /*/feeds/
+Disallow: /*?updated-max=
+Disallow: /*?m=1
+Disallow: /?m=1
+
+# Sitemap generado automáticamente por Blogger
+Sitemap: https://xogalax.blogspot.com/sitemap.xml

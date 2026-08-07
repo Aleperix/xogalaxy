@@ -14,6 +14,7 @@
     X.core.decorateTitle();
     X.core.initIcons();
     X.core.initFeedButton();
+    X.core.initShare();
     X.router.init();
     X.stats.init();
     X.chat.init();

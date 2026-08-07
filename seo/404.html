@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>404 - Actividad no encontrada | XO Galaxy</title>
+<style>
+  body{margin:0;min-height:100vh;display:grid;place-items:center;background:#080c14;color:#e9eff6;font-family:ui-monospace,"Space Mono",Menlo,Consolas,monospace;padding:24px}
+  .box{max-width:560px;text-align:center}
+  .terminal{max-width:560px;text-align:left;background:#0b121c;border:1px solid #1d2a3b;border-radius:12px;padding:24px;box-shadow:0 0 40px rgba(168,255,96,.08)}
+  .bar{display:flex;gap:6px;margin-bottom:18px}
+  .dot{width:10px;height:10px;border-radius:50%}
+  .d1{background:#ff5f56}.d2{background:#ffbd2e}.d3{background:#27c93f}
+  .code{color:#a8ff60;font-size:13px;letter-spacing:.15em;margin:0 0 6px}
+  .code .dim{color:#4c5a6e}
+  h1{font-size:72px;margin:0 0 4px;color:#a8ff60;line-height:1;text-shadow:0 0 28px rgba(168,255,96,.45)}
+  .sub{color:#7c8ba0;margin:0 0 6px;font-size:14px}
+  .msg{color:#5ec8ff;font-size:13px;line-height:1.8;margin:0 0 22px}
+  .cursor{display:inline-block;width:9px;height:15px;background:#a8ff60;vertical-align:-2px;animation:blink 1s steps(1) infinite}
+  @keyframes blink{50%{opacity:0}}
+  .btns{margin-top:4px}
+  .btn{display:inline-block;margin:6px;padding:11px 22px;border-radius:6px;text-decoration:none;font-weight:700;font-size:14px;font-family:ui-monospace,"Space Mono",Menlo,Consolas,monospace;transition:transform .2s}
+  .btn:hover{transform:translateY(-1px)}
+  .btn.signal{color:#080c14;background:#a8ff60}
+  .btn.line{color:#e9eff6;border:1px solid #1d2a3b}
+  .btn.line:hover{color:#5ec8ff;border-color:#5ec8ff}
+  .hint{color:#4c5a6e;font-size:11px;margin:22px 0 0;line-height:1.7}
+</style>
+</head>
+<body>
+  <div class="terminal">
+    <div class="bar"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span></div>
+    <p class="code"><span class="dim">xo-galaxy:~$</span> cargar actividad --nombre no-encontrado</p>
+    <h1>404</h1>
+    <p class="sub">ERROR: actividad no encontrada</p>
+    <p class="msg">La XO no pudo cargar esta actividad. Tal vez el archivo se guardó en otra carpeta,<br>
+    o esta página se perdió en órbita.<span class="cursor"></span></p>
+    <div class="btns">
+      <a class="btn signal" href="/">&larr; Volver a la órbita</a>
+      <a class="btn line" href="/search">Buscar una actividad</a>
+    </div>
+    <p class="hint">Consejo de soporte t&eacute;cnico: prob&aacute; apagar y encender la XO.<br>O el navegador. En eso estamos.</p>
+  </div>
+</body>
+</html>

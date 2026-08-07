@@ -241,12 +241,101 @@
     }
   }
 
+  // ---- Compartir en redes (botones .share-btn dentro de .share-row) ----
+  var SHARE_TARGETS = {
+    facebook: function (i) { return "https://www.facebook.com/sharer/sharer.php?u=" + enc(i.url); },
+    x: function (i) { return "https://twitter.com/intent/tweet?url=" + enc(i.url) + "&text=" + enc(i.title); },
+    whatsapp: function (i) { return "https://api.whatsapp.com/send?text=" + enc(i.title) + "%20" + enc(i.url); },
+    telegram: function (i) { return "https://t.me/share/url?url=" + enc(i.url) + "&text=" + enc(i.title); },
+    linkedin: function (i) { return "https://www.linkedin.com/sharing/share-offsite/?url=" + enc(i.url); },
+  };
+  function enc(s) {
+    return encodeURIComponent(s == null ? "" : String(s));
+  }
+  function shareInfo(row) {
+    var c = qs('link[rel="canonical"]');
+    var url = (c && c.getAttribute("href")) || location.href;
+    var title = (row && row.getAttribute("data-share-title")) || document.title;
+    return { url: url, title: title };
+  }
+  function sharePopup(url) {
+    var w = Math.min(600, (global.screen && screen.width) || 600) - 40;
+    var h = Math.min(520, (global.screen && screen.height) || 520) - 60;
+    global.open(url, "_blank", "width=" + w + ",height=" + h + ",noopener,noreferrer");
+  }
+  function fallbackCopy(text) {
+    var ta = el("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand("copy");
+    } catch (err) {}
+    document.body.removeChild(ta);
+  }
+  function copyFeedback(btn) {
+    var svg = btn.querySelector("svg");
+    var prev = svg ? svg.innerHTML : "";
+    var label = btn.getAttribute("aria-label");
+    if (svg) svg.innerHTML = '<path d="M20 6 9 17l-5-5"/>';
+    btn.setAttribute("aria-label", "Enlace copiado");
+    global.setTimeout(function () {
+      if (svg) svg.innerHTML = prev;
+      if (label) btn.setAttribute("aria-label", label);
+    }, 1600);
+  }
+  function initShare() {
+    if (!qsa(".share-row").length) return;
+    document.addEventListener("click", function (e) {
+      var btn = e.target && e.target.closest ? e.target.closest(".share-btn") : null;
+      if (!btn) return;
+      var row = btn.closest(".share-row");
+      var info = shareInfo(row);
+      var net = btn.getAttribute("data-share");
+      if (net === "copy") {
+        var done = function () {
+          copyFeedback(btn);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(info.url).then(done, done);
+        } else {
+          fallbackCopy(info.url);
+          done();
+        }
+        return;
+      }
+      if (net === "native") {
+        if (navigator.share) {
+          navigator
+            .share({ title: info.title, url: info.url })
+            .catch(function () {});
+        } else {
+          var done2 = function () {
+            copyFeedback(btn);
+          };
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(info.url).then(done2, done2);
+          } else {
+            fallbackCopy(info.url);
+            done2();
+          }
+        }
+        return;
+      }
+      var target = SHARE_TARGETS[net];
+      if (target) sharePopup(target(info));
+    });
+  }
+
   X.core = {
     hooks: { add: addHook, run: runHooks },
     utils: { qs: qs, qsa: qsa, el: el, escHtml: escHtml, fmt: fmt, animateStat: animateStat, getJSON: getJSON, postJSON: postJSON, getText: getText },
     initIcons: initIcons,
     decorateTitle: decorateTitle,
     initFeedButton: initFeedButton,
+    initShare: initShare,
     setupNav: setupNav,
     loadMore: loadMore,
     cleanupDownloadCache: cleanupDownloadCache,
