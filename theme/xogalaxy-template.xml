@@ -20,13 +20,61 @@
   
   <!-- Inyección de etiquetas nativas de Blogger (Obligatorio) -->
   <b:include data='blog' name='all-head-content'/>
+
+  <!-- SEO: favicon, theme-color, Open Graph, Twitter y JSON-LD (después de la inyección para pisar los tags automáticos de Blogger) -->
+  <link href='https://cdn.jsdelivr.net/gh/Aleperix/xogalaxy@main/assets/favicon.svg' rel='icon' type='image/svg+xml'/>
+  <link href='https://cdn.jsdelivr.net/gh/Aleperix/xogalaxy@main/assets/favicon.png' rel='icon' type='image/png'/>
+  <link href='https://cdn.jsdelivr.net/gh/Aleperix/xogalaxy@main/assets/favicon-180.png' rel='apple-touch-icon'/>
+  <meta content='#080c14' name='theme-color'/>
+  <meta content='#080c14' name='msapplication-navbutton-color'/>
+  <meta content='summary_large_image' name='twitter:card'/>
+  <b:if cond='data:blog.metaDescription'>
+    <meta expr:content='data:blog.metaDescription' property='og:description'/>
+  <b:else/>
+    <meta content='Todo lo que buscás para tu laptop XO: juegos, actividades y trucos para XO 1.0, XO 1.5, Magallanes y Positivo BGH — hecho por la comunidad, para la comunidad.' property='og:description'/>
+  </b:if>
+  <b:if cond='data:blog.pageType == "index"'>
+    <meta content='https://cdn.jsdelivr.net/gh/Aleperix/xogalaxy@main/assets/og-home.png' property='og:image'/>
+    <script type='application/ld+json'>
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "XO Galaxy",
+      "url": "<data:blog.homepageUrl/>",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": {"@type": "EntryPoint", "urlTemplate": "<data:blog.homepageUrl/>search?q={search_term_string}"},
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+  </b:if>
+  <b:if cond='data:blog.pageType == "item"'>
+    <script type='application/ld+json'>
+    {
+      "@context": "https://schema.org",
+      "@type": "BlogPosting",
+      "mainEntityOfPage": {"@type": "WebPage", "@id": "<data:post.url.canonical/>"},
+      "headline": "<data:post.title/>",
+      "image": ["<data:post.featuredImage.image/>"],
+      "datePublished": "<data:post.date.iso/>",
+      "author": {"@type": "Person", "name": "<data:post.author.name/>", "url": "<data:post.author.profileUrl/>"},
+      "publisher": {"@type": "Organization", "name": "XO Galaxy", "logo": {"@type": "ImageObject", "url": "https://cdn.jsdelivr.net/gh/Aleperix/xogalaxy@main/assets/favicon.png"}},
+      "description": "Todo lo que buscás para tu laptop XO: juegos, actividades y trucos para XO 1.0, XO 1.5, Magallanes y Positivo BGH — hecho por la comunidad, para la comunidad."
+    }
+    </script>
+  </b:if>
   
   <b:if cond='data:blog.metaDescription'>
     <meta expr:content='data:blog.metaDescription' name='description'/>
   <b:else/>
     <meta content='Todo lo que buscás para tu laptop XO: juegos, actividades y trucos para XO 1.0, XO 1.5, Magallanes y Positivo BGH — hecho por la comunidad, para la comunidad.' name='description'/>
   </b:if>
-  <title><data:blog.pageTitle/></title>
+  <b:if cond='data:blog.pageType == "item"'>
+    <title><data:post.title/> - <data:blog.title/></title>
+  <b:else/>
+    <title><data:blog.pageTitle/></title>
+  </b:if>
 
   <link href='https://fonts.googleapis.com' rel='preconnect'/>
   <link crossorigin='anonymous' href='https://fonts.gstatic.com' rel='preconnect'/>
@@ -60,7 +108,7 @@
     .orbit-center{position:absolute;inset:0;display:grid;place-items:center}.orbit-center:after{content:"";width:36px;height:36px;border-radius:50%;background:var(--signal);box-shadow:0 0 30px rgba(168,255,96,.55)}
     .orbit-dot{position:absolute;top:-2px;left:50%;width:8px;height:8px;border-radius:50%;background:var(--orbit);box-shadow:0 0 10px var(--orbit);transform:translateX(-50%)}
     .hero-kicker{margin:0 0 12px;font-family:var(--font-data);font-size:12px;letter-spacing:.35em;text-transform:uppercase;color:var(--mute)}
-    .hero h1{margin:0;font-family:var(--font-display);font-size:clamp(2.25rem,7vw,3.75rem);line-height:1.1;letter-spacing:-.04em}.hero-description{width:min(100%,640px);margin:20px 0 0;font-size:clamp(.95rem,2vw,1.125rem);line-height:1.7;color:var(--mute)}
+    .hero #site-title{margin:0;font-family:var(--font-display);font-size:clamp(2.25rem,7vw,3.75rem);line-height:1.1;letter-spacing:-.04em}.hero-description{width:min(100%,640px);margin:20px 0 0;font-size:clamp(.95rem,2vw,1.125rem);line-height:1.7;color:var(--mute)}
     .hero-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-top:32px}.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:10px 20px;border-radius:6px;font-family:var(--font-display);font-size:14px;font-weight:700;transition:background-color .2s,border-color .2s,color .2s,transform .2s}.btn:hover{transform:translateY(-1px)}
     .btn-primary{color:var(--void);background:var(--signal);border:1px solid var(--signal)}.btn-primary:hover{background:var(--signal-dim);border-color:var(--signal-dim)}.btn-secondary{color:var(--ink);background:transparent;border:1px solid var(--line)}.btn-secondary:hover{color:var(--orbit);border-color:var(--orbit)}
     .nav-toggle{display:none}.nav-toggle-icon{display:inline-block;position:relative;width:16px;height:2px;background:currentColor;border-radius:2px}.nav-toggle-icon:before,.nav-toggle-icon:after{content:"";position:absolute;left:0;width:16px;height:2px;background:currentColor;border-radius:2px}.nav-toggle-icon:before{top:-5px}.nav-toggle-icon:after{top:5px}.main-nav{position:relative;z-index:5;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;margin-top:56px;font-family:var(--font-data);font-size:14px}
@@ -93,7 +141,7 @@
     @media (prefers-reduced-motion:no-preference){.orbit{animation:spin 22s linear infinite;transform-origin:50% 50%}.orbit.second{animation:spin-reverse 30s linear infinite}.blink{animation:blink 1.4s steps(1) infinite}.post{animation:rise .6s cubic-bezier(.16,1,.3,1) both}.post:nth-child(2){animation-delay:.05s}.post:nth-child(3){animation-delay:.1s}.post:nth-child(4){animation-delay:.15s}.post:nth-child(5){animation-delay:.2s}.post:nth-child(6){animation-delay:.25s}}
     @media (max-width:900px){.main-layout{grid-template-columns:1fr;gap:40px}.sidebar{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}.sidebar-card:first-child{grid-column:1/-1}.newsletter-inner{align-items:stretch;flex-direction:column}.newsletter-form{max-width:none}.post,.post:has(.post-cover){grid-template-columns:1fr}.post-title{font-size:24px}.nav-toggle{display:flex;align-items:center;justify-content:center;gap:8px;margin:28px auto 0;min-height:44px;padding:10px 16px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;font-family:var(--font-display);font-size:13px;font-weight:700;cursor:pointer}.nav-toggle:hover{color:var(--signal);border-color:var(--signal)}.main-nav{position:fixed;z-index:80;top:0;right:0;bottom:0;width:min(320px,85vw);margin:0;padding:24px;align-items:stretch;flex-direction:column;justify-content:flex-start;gap:4px;background:var(--panel);border-left:1px solid var(--line);box-shadow:-20px 0 40px rgba(0,0,0,.35);transform:translateX(100%);transition:transform .3s cubic-bezier(.16,1,.3,1);overflow-y:auto}.main-nav .nav-link,.main-nav .dropdown-toggle{justify-content:flex-start}.main-nav .dropdown-menu{position:static;width:100%;margin-top:6px;box-shadow:none}.main-nav .search-box{width:100%;margin:8px 0 0}body.nav-open{overflow:hidden}body.nav-open .main-nav{transform:translateX(0)}.nav-backdrop{position:fixed;z-index:70;inset:0;background:rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:opacity .3s}body.nav-open .nav-backdrop{opacity:1;pointer-events:auto}}
     @media (max-width:640px){.container{width:min(calc(100% - 28px),var(--container))}.status-inner{justify-content:center;text-align:center}.status-nav{display:none}.hero-inner{padding-top:48px;padding-bottom:56px}.orbital-logo{width:96px;height:96px}.orbit.second{inset:10px}.orbit-center:after{width:30px;height:30px}.hero-kicker{font-size:10px;letter-spacing:.22em}.hero-description{font-size:14px;line-height:1.7}.hero-actions{width:100%;flex-direction:column}.hero-actions .btn{width:100%}.newsletter-text{align-items:flex-start;text-align:center}.newsletter-form{flex-direction:column}.newsletter-form button{width:100%}.tag-cloud-inner{gap:7px 12px}.main-layout{padding-top:40px;padding-bottom:40px}.section-heading{flex-wrap:wrap}.heading-meta{width:100%}.post{padding:18px}.post-footer{align-items:flex-start;flex-direction:column;gap:8px}.sidebar{grid-template-columns:1fr}.sidebar-card:first-child{grid-column:auto}.faq-grid{grid-template-columns:1fr;gap:32px;padding-block:40px}.chat{padding-block:40px}.chat-box{height:400px}.stats{grid-template-columns:repeat(2,1fr)}.footer-nav{gap:10px 18px}}
-    @media (max-width:380px){.container{width:min(calc(100% - 20px),var(--container))}.hero h1{font-size:2rem}.post-meta{align-items:flex-start;flex-direction:column}.stats{gap:6px}.xo-grid{grid-template-columns:1fr}}
+    @media (max-width:380px){.container{width:min(calc(100% - 20px),var(--container))}.hero #site-title{font-size:2rem}.post-meta{align-items:flex-start;flex-direction:column}.stats{gap:6px}.xo-grid{grid-template-columns:1fr}}
   ]]></b:skin>
 </head>
 
@@ -121,7 +169,11 @@
         </a>
 
         <p class='hero-kicker'>transmitiendo desde 2012</p>
-        <h1 id='site-title'><data:blog.title/></h1>
+        <b:if cond='data:blog.pageType == "index"'>
+          <h1 id='site-title'><data:blog.title/></h1>
+        <b:else/>
+          <p id='site-title'><data:blog.title/></p>
+        </b:if>
         <p class='hero-description'>
           <b:if cond='data:blog.metaDescription'>
             <data:blog.metaDescription/>
