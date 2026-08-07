@@ -254,7 +254,7 @@
   }
   function shareInfo(row) {
     var c = qs('link[rel="canonical"]');
-    var url = (c && c.getAttribute("href")) || location.href;
+    var url = (row && row.getAttribute("data-share-url")) || (c && c.getAttribute("href")) || location.href;
     var title = (row && row.getAttribute("data-share-title")) || document.title;
     return { url: url, title: title };
   }
