@@ -58,16 +58,16 @@ describe("core DOM helpers", () => {
     expect(h1.querySelectorAll(".text-signal").length).toBe(1);
   });
 
-  it("cleanupDownloadCache elimina recetas expiradas tbr_ y htb_", () => {
+  it("cleanupDownloadCache elimina recetas expiradas de cualquier juego", () => {
     localStorage.setItem("tbr_viejo", JSON.stringify({ t: Date.now() - 40 * 24 * 3600e3 }));
     localStorage.setItem("tbr_nuevo", JSON.stringify({ t: Date.now() }));
     localStorage.setItem("htb_viejo", JSON.stringify({ t: Date.now() - 40 * 24 * 3600e3 }));
-    localStorage.setItem("otro", "x");
+    localStorage.setItem("xogalaxy.theme", "dark");
     window.XOGalaxy.core.cleanupDownloadCache();
     expect(localStorage.getItem("tbr_viejo")).toBeNull();
     expect(localStorage.getItem("tbr_nuevo")).not.toBeNull();
     expect(localStorage.getItem("htb_viejo")).toBeNull();
-    expect(localStorage.getItem("otro")).toBe("x");
+    expect(localStorage.getItem("xogalaxy.theme")).toBe("dark");
   });
 });
 

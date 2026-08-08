@@ -182,23 +182,21 @@
       });
   }
 
-  // ---- Limpieza de cachés de descargas (tbr_*, htb_*) ----
+  // ---- Limpieza de cachés de descargas (cualquier juego) ----
+  // Las recetas se guardan con clave "<juego>_<arch>" (p. ej. tbr_ARM64, htb_X86)
+  // y valor JSON con campo t (timestamp). Prune genérico por firma: así añadir
+  // un juego nuevo NO requiere retocar la plantilla ni el bundle.
   function cleanupDownloadCache() {
-    var PREFIXES = ["tbr_", "htb_"],
-      MAX_AGE = 30 * 24 * 3600e3,
-      MAX_BYTES = 2 * 1024 * 1024;
+    var MAX_AGE = 30 * 24 * 3600e3,
+      MAX_BYTES = 2 * 1024 * 1024,
+      CACHE_KEY = /^[a-z0-9]+_[a-zA-Z0-9-]+$/;
     try {
       var now = Date.now(),
         total = 0,
         changed = false;
       for (var i = 0; i < localStorage.length; i++) {
         var k = localStorage.key(i);
-        if (!k) continue;
-        var matched = false;
-        for (var p = 0; p < PREFIXES.length; p++) {
-          if (k.indexOf(PREFIXES[p]) === 0) { matched = true; break; }
-        }
-        if (!matched) continue;
+        if (!k || !CACHE_KEY.test(k)) continue;
         var raw = localStorage.getItem(k);
         total += raw ? raw.length : 0;
         var rec = null;
