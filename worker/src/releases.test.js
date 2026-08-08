@@ -51,6 +51,16 @@ describe("releases helpers", () => {
     expect(() => parseReleaseUrl("nope")).toThrow();
   });
 
+  it("rechaza URLs de descarga directa (assets), no de páginas", () => {
+    expect(() =>
+      parseReleaseUrl("https://github.com/Aleperix/tumbleboy-reborn/releases/latest/download/tumbleboy-reborn-ARM64.apk")
+    ).toThrow();
+    expect(() =>
+      parseReleaseUrl("https://github.com/Aleperix/tumbleboy-reborn/releases/download/v1.1.5/tumbleboy-reborn-ARM64.apk")
+    ).toThrow();
+    expect(() => parseReleaseUrl("https://github.com/Aleperix/tumbleboy-reborn/releases/expanded_assets/v1.1.5")).toThrow();
+  });
+
   it("buildApiUrl mapea latest y tags", () => {
     expect(buildApiUrl({ owner: "A", repo: "b", tag: null })).toBe("https://api.github.com/repos/A/b/releases/latest");
     expect(buildApiUrl({ owner: "A", repo: "b", tag: "v1.1.5" })).toBe("https://api.github.com/repos/A/b/releases/tags/v1.1.5");

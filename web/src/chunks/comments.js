@@ -87,6 +87,14 @@
       var body = utils.el("div", "cmt-body", c.body);
       li.appendChild(header);
       li.appendChild(body);
+      if (X.engagement && X.engagement.mount) {
+        var engage = utils.el("div", "cmt-engage");
+        engage.setAttribute("data-engagement", "comment:" + c.id);
+        engage.setAttribute("data-rating", "0");
+        engage.setAttribute("data-reactions", "👍,❤️,😆,😮,😢,😡");
+        li.appendChild(engage);
+        X.engagement.mount(engage);
+      }
       return li;
     }
 

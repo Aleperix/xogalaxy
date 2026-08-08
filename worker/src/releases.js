@@ -10,7 +10,6 @@
  */
 
 const API = "https://api.github.com";
-const RELEASES_RE = /^\/releases(?:\/(latest|tag)\/([^/?#]+))?\/?/;
 
 export function parseReleaseUrl(raw) {
   let url;
@@ -27,8 +26,12 @@ export function parseReleaseUrl(raw) {
   if (!owner || !repo) throw new Error("not a github release url");
   const rest = "/" + parts.slice(2).join("/");
   let tag = null;
-  const m = RELEASES_RE.exec(rest);
-  if (m && m[1] === "tag" && m[2]) tag = m[2];
+  if (rest === "/releases" || rest === "/releases/") {
+    return { owner, repo, tag };
+  }
+  const m = /^\/releases\/(latest|tag(?:\/[^/?#]+)?)\/?$/.exec(rest);
+  if (!m) throw new Error("not a github release url");
+  if (m[1] !== "latest") tag = m[1].slice(4);
   return { owner, repo, tag };
 }
 

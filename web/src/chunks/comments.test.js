@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import "../core.js";
 import "../api.js";
 import "./auth.js";
+import "./engagement.js";
 import "./comments.js";
 
 function flush() {
@@ -214,5 +215,42 @@ describe("chunk comments", () => {
     document.querySelector(".cmt-approve").click();
     await flush();
     expect(document.querySelectorAll(".cmts-mod-list .cmt").length).toBe(0);
+  });
+
+  it("monta reacciones por comentario (target comment:<id>, sin rating)", async () => {
+    mockBackend({
+      "/comments": (u) => {
+        if (u.searchParams.get("count") === "1") {
+          return Promise.resolve(new Response(JSON.stringify({ count: 1 }), { status: 200 }));
+        }
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              comments: [{ id: 7, postId: "p123", body: "ok", status: "approved", createdAt: 1700000000000 }],
+            }),
+            { status: 200 }
+          )
+        );
+      },
+      "/engagement": () =>
+        Promise.resolve(
+          new Response(JSON.stringify({ ratings: {}, reactions: { "comment:7": { counts: { "👍": 1 } } } }), { status: 200 })
+        ),
+    });
+
+    window.XOGalaxy.comments.init();
+    await flush();
+    document.querySelector(".cmts-toggle").click();
+    await flush();
+
+    const host = document.querySelector('.cmt[data-id="7"] .cmt-engage');
+    expect(host).toBeTruthy();
+    expect(host.getAttribute("data-engagement")).toBe("comment:7");
+    expect(host.getAttribute("data-rating")).toBe("0");
+    expect(host.querySelector(".engage-stars")).toBeNull();
+    const btn = host.querySelector('.engage-react[data-type="👍"]');
+    expect(btn).toBeTruthy();
+    await flush();
+    expect(btn.querySelector(".engage-react-count").textContent).toBe("1");
   });
 });

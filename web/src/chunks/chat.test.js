@@ -7,7 +7,6 @@ import "../api.js";
 import "../markdown.js";
 import "./auth.js";
 import "./engagement.js";
-import "./releases.js";
 import "./chat.js";
 
 const VENDOR_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../vendor");
@@ -315,95 +314,5 @@ describe("chunk chat", () => {
     const body = document.querySelector(".chat-msg-body");
     expect(body.querySelector("strong").textContent).toBe("negrita");
     expect(body.innerHTML).not.toContain("onclick");
-  });
-
-  it("convierte enlaces de releases en card dentro del chat", async () => {
-    loadVendored();
-    mockBackend({
-      "/releases": () =>
-        Promise.resolve(
-          new Response(
-            JSON.stringify({
-              ok: true,
-              owner: "Aleperix",
-              repo: "tumbleboy-reborn",
-              tagName: "v1.1.5",
-              name: "TumbleBoy Reborn v1.1.5",
-              body: "changelog",
-              htmlUrl: "https://github.com/Aleperix/tumbleboy-reborn/releases/tag/v1.1.5",
-              cover: null,
-              assets: [
-                { name: "tumbleboy-reborn-ARM64.apk", size: 100, browserDownloadUrl: "https://github.com/Aleperix/tumbleboy-reborn/releases/download/v1.1.5/tumbleboy-reborn-ARM64.apk" },
-              ],
-            }),
-            { status: 200 }
-          )
-        ),
-    });
-    window.XOGalaxy.chat.init();
-    const ws = FakeWS.last;
-    ws.readyState = 1;
-    ws.fire("message", {
-      data: JSON.stringify({ type: "history", messages: [
-        { id: 1, nickname: "Ana", body: "Descargá [v1.1.5](https://github.com/Aleperix/tumbleboy-reborn/releases/latest)", createdAt: 1 },
-      ] }),
-    });
-    await flush();
-    await flush();
-    const card = document.querySelector(".chat-msg .release-card");
-    expect(card).toBeTruthy();
-    expect(card.querySelector(".release-name").textContent).toBe("TumbleBoy Reborn v1.1.5");
-  });
-
-  it("reacción a un mensaje togglea counts y difunde por WS", async () => {
-    window.XOGalaxy.chat.init();
-    const ws = FakeWS.last;
-    ws.readyState = 1;
-    ws.fire("open");
-    ws.fire("message", {
-      data: JSON.stringify({ type: "history", messages: [
-        { id: 5, nickname: "Ana", body: "hola", createdAt: 5 },
-      ] }),
-    });
-
-    mockBackend({
-      "/reaction": (u, opts) => {
-        expect(JSON.parse(opts.body)).toMatchObject({ target: "chat:general:5", type: "❤" });
-        return Promise.resolve(new Response(JSON.stringify({ counts: { "❤": 1 } }), { status: 200 }));
-      },
-    });
-
-    const btn = document.querySelector('.chat-react[data-type="❤"]');
-    btn.click();
-    await flush();
-
-    expect(btn.querySelector(".chat-react-count").textContent).toBe("1");
-    const reactionFrame = ws.sent.find((s) => JSON.parse(s).type === "reaction");
-    expect(reactionFrame).toBeTruthy();
-    expect(JSON.parse(reactionFrame)).toEqual({ type: "reaction", messageId: 5, reaction: "❤" });
-    vi.unstubAllGlobals();
-  });
-
-  it("el evento WS reaction refresca los counts del mensaje", async () => {
-    window.XOGalaxy.chat.init();
-    const ws = FakeWS.last;
-    ws.readyState = 1;
-    ws.fire("open");
-    ws.fire("message", {
-      data: JSON.stringify({ type: "history", messages: [
-        { id: 3, nickname: "Ana", body: "hola", createdAt: 3 },
-      ] }),
-    });
-
-    mockBackend({
-      "/reaction": () => Promise.resolve(new Response(JSON.stringify({ counts: { "👍": 2 } }), { status: 200 })),
-    });
-
-    ws.fire("message", { data: JSON.stringify({ type: "reaction", messageId: 3, reaction: "👍" }) });
-    await flush();
-
-    const btn = document.querySelector('.chat-react[data-type="👍"]');
-    expect(btn.querySelector(".chat-react-count").textContent).toBe("2");
-    vi.unstubAllGlobals();
   });
 });

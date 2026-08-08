@@ -85,14 +85,6 @@ export class Room extends DurableObject {
       await this.sendMessage(room, nickname, body, author);
       return;
     }
-
-    if (data?.type === "reaction") {
-      const room = this.roomOf(ws);
-      const messageId = Number(data.messageId);
-      const reaction = String(data.reaction || "").trim().slice(0, 32);
-      if (!Number.isInteger(messageId) || !reaction) return;
-      this.broadcast(room, { type: "reaction", messageId, reaction });
-    }
   }
 
   roomOf(ws) {

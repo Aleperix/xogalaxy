@@ -20,7 +20,6 @@
   var ONLINE_CLASS = "chat-online";
   var OFFLINE_CLASS = "chat-offline";
   var BADGE_SELECTOR = '.nav-link[href="#chat"] [data-chat-badge]';
-  var REACTION_TYPES = ["❤", "👍", "🔥"];
 
   function create() {
     var app = utils.qs("#chat-app");
@@ -143,73 +142,11 @@
       root.classList.toggle(OFFLINE_CLASS, cls === "offline");
     }
 
-    function msgTarget(id) {
-      return "chat:" + room + ":" + id;
-    }
-
     function findMessage(id) {
       for (var i = 0; i < list.children.length; i++) {
         if (list.children[i].getAttribute("data-id") === String(id)) return list.children[i];
       }
       return null;
-    }
-
-    function reactionsRow(id) {
-      var wrap = utils.el("div", "chat-reactions");
-      REACTION_TYPES.forEach(function (type) {
-        var b = utils.el("button", "chat-react");
-        b.type = "button";
-        b.setAttribute("data-id", String(id));
-        b.setAttribute("data-type", type);
-        b.setAttribute("aria-pressed", "false");
-        var emoji = utils.el("span", "chat-react-emoji", type);
-        var count = utils.el("span", "chat-react-count", "");
-        b.appendChild(emoji);
-        b.appendChild(count);
-        wrap.appendChild(b);
-      });
-      return wrap;
-    }
-
-    function applyCounts(li, counts) {
-      Array.prototype.forEach.call(utils.qsa(".chat-react", li), function (b) {
-        var type = b.getAttribute("data-type");
-        var c = (counts || {})[type] || 0;
-        utils.qs(".chat-react-count", b).textContent = c ? String(c) : "";
-      });
-    }
-
-    function loadCounts() {
-      var ids = [];
-      for (var i = 0; i < list.children.length && ids.length < 50; i++) {
-        var id = Number(list.children[i].getAttribute("data-id"));
-        if (Number.isInteger(id)) ids.push(id);
-      }
-      if (!ids.length) return;
-      api
-        .engagement(ids.map(function (id) {
-          return msgTarget(id);
-        }))
-        .then(function (d) {
-          ids.forEach(function (id) {
-            var li = findMessage(id);
-            if (li && d.reactions && d.reactions[msgTarget(id)]) {
-              applyCounts(li, d.reactions[msgTarget(id)].counts);
-            }
-          });
-        })
-        .catch(function () {});
-    }
-
-    function refreshCounts(id) {
-      if (!Number.isInteger(id) || !findMessage(id)) return;
-      api.reaction
-        .get(msgTarget(id))
-        .then(function (d) {
-          var li = findMessage(id);
-          if (li) applyCounts(li, d.counts);
-        })
-        .catch(function () {});
     }
 
     function msgEl(message) {
@@ -234,17 +171,12 @@
       }
       li.appendChild(meta);
       li.appendChild(body);
-      li.appendChild(reactionsRow(message.id));
       return li;
     }
 
     function append(message) {
       var li = msgEl(message);
       list.appendChild(li);
-      if (X.releases && X.releases.scan) {
-        var bodyEl = utils.qs(".chat-msg-body", li);
-        if (bodyEl) X.releases.scan(bodyEl);
-      }
       while (list.children.length > MAX_MSGS) list.removeChild(list.firstChild);
       list.scrollTop = list.scrollHeight;
     }
@@ -271,7 +203,6 @@
         list.innerHTML = "";
         var messages = data.messages || [];
         messages.forEach(append);
-        loadCounts();
         var maxTs = messages.reduce(function (m, x) {
           return x.createdAt > m ? x.createdAt : m;
         }, 0);
@@ -292,8 +223,6 @@
         onIncoming(data.message);
       } else if (data.type === "deleted") {
         removeMessage(data.id);
-      } else if (data.type === "reaction") {
-        refreshCounts(Number(data.messageId));
       }
     }
 
@@ -335,7 +264,6 @@
         .then(function (d) {
           list.innerHTML = "";
           (d.messages || []).forEach(append);
-          loadCounts();
         })
         .catch(function () {});
     }
@@ -359,24 +287,6 @@
       send(body).catch(function () {
         setStatus("no se pudo enviar — reintentá", "offline");
       });
-    });
-
-    list.addEventListener("click", function (e) {
-      var btn = e.target.closest ? e.target.closest(".chat-react") : null;
-      if (!btn) return;
-      var id = Number(btn.getAttribute("data-id"));
-      var type = btn.getAttribute("data-type");
-      if (!Number.isInteger(id) || !type) return;
-      X.engagement
-        .toggle(msgTarget(id), type)
-        .then(function (d) {
-          var li = findMessage(id);
-          if (li) applyCounts(li, d.counts);
-        })
-        .catch(function () {});
-      if (online && ws && ws.readyState === 1) {
-        ws.send(JSON.stringify({ type: "reaction", messageId: id, reaction: type }));
-      }
     });
 
     nickInput.addEventListener("change", function () {

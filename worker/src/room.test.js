@@ -128,40 +128,4 @@ describe("chat WebSocket", () => {
     });
   });
 
-  it("relaya reacciones a la sala sin persistir", async () => {
-    const stub = env.ROOM.getByName("wstest");
-    const fakeWs = {
-      deserializeAttachment: () => ({ nickname: "Alice", room: "wstest" }),
-      send: () => {},
-    };
-    const sent = [];
-
-    await runInDurableObject(stub, async (instance, state) => {
-      const peer = { send: (p) => sent.push(p) };
-      const spy = vi.spyOn(instance.ctx, "getWebSockets").mockReturnValue([fakeWs, peer]);
-      await instance.webSocketMessage(fakeWs, JSON.stringify({ type: "reaction", messageId: 7, reaction: "❤" }));
-      expect(spy).toHaveBeenCalledWith("wstest");
-    });
-
-    expect(sent).toHaveLength(1);
-    expect(JSON.parse(sent[0])).toEqual({ type: "reaction", messageId: 7, reaction: "❤" });
-
-    const history = await (await exports.default.fetch("http://x.test/chat/history?room=wstest")).json();
-    expect(history.messages).toHaveLength(0);
-  });
-
-  it("no relaya reacciones inválidas", async () => {
-    const stub = env.ROOM.getByName("wstest");
-    const fakeWs = {
-      deserializeAttachment: () => ({ nickname: "Alice", room: "wstest" }),
-      send: () => {},
-    };
-
-    await runInDurableObject(stub, async (instance, state) => {
-      const broadcast = vi.spyOn(instance, "broadcast");
-      await instance.webSocketMessage(fakeWs, JSON.stringify({ type: "reaction", messageId: "x", reaction: "" }));
-      await instance.webSocketMessage(fakeWs, JSON.stringify({ type: "reaction", messageId: 1, reaction: "   " }));
-      expect(broadcast).not.toHaveBeenCalled();
-    });
-  });
 });
