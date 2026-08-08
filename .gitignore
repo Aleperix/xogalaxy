@@ -6,3 +6,4 @@ dist/
 .DS_Store
 client_secret_*.json
 *.blogger-credentials.json
+theme/xogalaxy-template.injected.xml

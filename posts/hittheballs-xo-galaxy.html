@@ -1,0 +1,399 @@
+<!-- ============================================================
+     POST: HitTheBalls en XO Galaxy
+     Pega TODO este bloque en el editor HTML del post de Blogger.
+
+     ================= PROMPT PARA LA PORTADA (nano-banana) =================
+     "Bolas de colores brillantes (azul, rojo, verde y naranja) rebotando
+     sobre un fondo casi negro #080c14, cada una con una operación aritmética
+     en blanco (como '3+4', '9×9' o '18-9'), y arriba una barra roja con el
+     resultado objetivo en amarillo neón. Estilo minimalista de afiche retro
+     espacial, tipografía monoespaciada, luz neón suave, sin texto."
+
+     ============ SNIPPET GLOBAL DE CACHÉ (plantilla) ============
+     La limpieza de cachés de descargas (claves "htb_*") vive en la
+     plantilla xogalaxy-template.xml (script antes de </body>), así que
+     este post NO lleva su propio prune. La clave de caché del post es
+     "htb_releases".
+
+     ================= CONFIGURACIÓN EN BLOGGER =================
+     * Título y etiquetas van en el EDITOR de Blogger, NO en este HTML:
+       - Título del post: "HitTheBalls en XO Galaxy".
+       - Etiquetas (labels), exactamente estas:
+         HitTheBalls, Godot, Android, Plan Ceibal, Código abierto, Retro.
+       (El h1 y los chips de tags se eliminaron para no duplicarlos.)
+     * Imágenes: se sirven desde jsDelivr (repo Aleperix/hittheballs,
+       carpeta blog/xo-galaxy/). Al cambiar una imagen en el repo, el CDN
+       la refresca sola en ~12 h (o purga puntual en purge.jsdelivr.net).
+     * Changelog y tamaños: se sirven de blog/xo-galaxy/releases.json vía
+       jsDelivr; si no responde, el script cae a la API de GitHub. Al
+       publicar una release, regenerar el JSON con:
+           python3 tools/gen_releases_json.py
+       (ver la guía de release del proyecto).
+     * Botones de descarga: su enlace es .../releases/latest/download/...,
+       que GitHub resuelve SIEMPRE a la última release publicada (no depende
+       de ninguna caché). El texto del botón (versión · tamaño) es solo
+       informativo y puede tardar hasta ~12 h en refrescarse tras una release.
+     ============================================================ -->
+
+<div class="htb-post">
+
+  <style>
+    .htb-post{max-width:100%;font-family:var(--font-body,"Inter"),sans-serif;color:var(--ink,#e9eff6);font-size:15px;line-height:1.75}
+    .htb-post *{box-sizing:border-box}
+    .htb-post a{color:var(--signal,#a8ff60);text-decoration:underline;text-underline-offset:3px}
+    .htb-post a.htb-btn{text-decoration:none}
+    .htb-post code{font-family:var(--font-data,"JetBrains Mono"),monospace;font-size:13px;background:var(--panel-2,#0b121c);border:1px solid var(--line,#1d2a3b);border-radius:4px;padding:1px 5px}
+    .htb-post pre{font-family:var(--font-data,"JetBrains Mono"),monospace;font-size:13px;background:var(--panel-2,#0b121c);border:1px solid var(--line,#1d2a3b);border-radius:var(--radius,12px);padding:14px 16px;overflow-x:auto}
+    .htb-post h2,.htb-post h3,.htb-post h4{font-family:var(--font-display,"Space Mono"),monospace;line-height:1.35;margin:28px 0 10px}
+    .htb-post h2{font-size:20px;color:var(--signal,#a8ff60)}
+    .htb-post h3{font-size:16px;color:var(--orbit,#5ec8ff)}
+    .htb-post h4{font-size:14px;color:var(--ceibal,#ff8a3d)}
+    .htb-post ul{padding-left:20px;margin:8px 0}
+    .htb-post li{margin:4px 0}
+    .htb-post img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--line,#1d2a3b)}
+    .htb-post blockquote{margin:12px 0;padding:2px 16px;border-left:3px solid var(--ceibal,#ff8a3d);color:var(--mute,#7c8ba0)}
+    .htb-cover{margin-bottom:20px}
+    .htb-cover img{width:100%;display:block}
+    .htb-hero{border:1px solid var(--line,#1d2a3b);border-radius:var(--radius,12px);padding:24px;background:linear-gradient(160deg,var(--panel,#0f1723),var(--panel-2,#0b121c));margin-bottom:24px}
+    .htb-hero h1{margin:0 0 8px;font-family:var(--font-display,"Space Mono"),monospace;font-size:26px;line-height:1.25}
+    .htb-hero .htb-hero-sub{margin:0;color:var(--mute,#7c8ba0);font-size:14px}
+    .htb-downloads{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:16px 0}
+    .htb-btn{display:flex;flex-direction:column;gap:2px;padding:14px 16px;border:1px solid var(--signal,#a8ff60);border-radius:var(--radius,12px);background:rgba(168,255,96,.06);color:var(--signal,#a8ff60);text-align:center;transition:background .2s,border-color .2s}
+    .htb-btn:hover{background:rgba(168,255,96,.14);border-color:var(--signal-dim,#6fbf3e);text-decoration:none}
+    .htb-btn small{font-family:var(--font-data,"JetBrains Mono"),monospace;font-size:11px;color:var(--mute,#7c8ba0)}
+    .htb-btn .htb-btn-size{color:var(--mute,#7c8ba0)}
+    .htb-src{margin:14px 0}
+    .htb-status{display:flex;flex-wrap:wrap;align-items:center;gap:10px;font-family:var(--font-data,"JetBrains Mono"),monospace;font-size:12px;color:var(--mute,#7c8ba0);margin:10px 0}
+    .htb-status button{font-family:var(--font-data,"JetBrains Mono"),monospace;font-size:11px;color:var(--ink,#e9eff6);background:var(--panel,#0f1723);border:1px solid var(--line,#1d2a3b);border-radius:6px;padding:6px 12px;cursor:pointer}
+    .htb-status button:hover{color:var(--signal,#a8ff60);border-color:var(--signal,#a8ff60)}
+    .htb-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+    .htb-dot.on{background:var(--signal,#a8ff60);box-shadow:0 0 8px var(--signal,#a8ff60)}
+    .htb-dot.off{background:var(--mute-2,#4c5a6e)}
+    .htb-acc{margin:10px 0}
+    .htb-acc details{border:1px solid var(--line,#1d2a3b);border-radius:8px;margin:8px 0;background:var(--panel,#0f1723);overflow:hidden}
+    .htb-acc details[open]{border-color:var(--signal,#a8ff60)}
+    .htb-acc summary{cursor:pointer;list-style:none;padding:12px 16px;display:flex;align-items:baseline;gap:12px;font-family:var(--font-display,"Space Mono"),monospace;font-size:13px}
+    .htb-acc summary::-webkit-details-marker{display:none}
+    .htb-acc summary:hover{color:var(--signal,#a8ff60)}
+    .htb-acc .htb-acc-date{font-family:var(--font-data,"JetBrains Mono"),monospace;font-size:11px;color:var(--mute,#7c8ba0);margin-left:auto}
+    .htb-acc .htb-acc-body{padding:2px 16px 14px;font-size:14px}
+    .htb-acc .htb-acc-body h2,.htb-acc .htb-acc-body h3,.htb-acc .htb-acc-body h4{font-size:13px;margin:14px 0 6px;color:var(--ceibal,#ff8a3d)}
+    .htb-acc .htb-acc-body ul{margin:4px 0}
+    .htb-acc .htb-acc-body a{word-break:break-all}
+    .htb-caption{margin:8px 0 4px;color:var(--mute,#7c8ba0);font-family:var(--font-data,"JetBrains Mono"),monospace;font-size:12px;text-align:center}
+    .htb-teaser{border:1px dashed var(--ceibal,#ff8a3d);border-radius:var(--radius,12px);padding:16px 20px;margin:20px 0;background:rgba(255,138,61,.05)}
+    .htb-teaser b{color:var(--ceibal,#ff8a3d)}
+    .htb-credits{border:1px solid var(--line,#1d2a3b);border-radius:var(--radius,12px);padding:20px 24px;background:var(--panel,#0f1723);margin:20px 0}
+    .htb-credits h3{margin:0 0 12px}
+    .htb-credits .htb-credits-block{margin:10px 0}
+    .htb-credits .htb-credits-name{font-family:var(--font-data,"JetBrains Mono"),monospace;font-size:13px;color:var(--ink,#e9eff6);margin:2px 0}
+    .htb-credits .htb-credits-role{font-size:12px;color:var(--mute,#7c8ba0);margin:0 0 6px}
+    .htb-foot{margin-top:28px;padding-top:16px;border-top:1px solid var(--line,#1d2a3b);color:var(--mute,#7c8ba0);font-size:13px}
+    .htb-muted{color:var(--mute,#7c8ba0)}
+  </style>
+
+  <div class="htb-cover">
+    <img src="https://cdn.jsdelivr.net/gh/Aleperix/hittheballs@main/blog/xo-galaxy/portada.png" alt="Portada de HitTheBalls">
+  </div>
+
+  <div class="htb-hero">
+    <p class="htb-hero-sub">El clásico de la <b>XO</b> para practicar cálculo mental, rehecho en Godot (3.6 + 4), listo para instalar en teléfonos, tablets y Android TV.</p>
+  </div>
+
+  <!-- CAPTURA 1: El menú principal con los 3 niveles -->
+  <img src="https://cdn.jsdelivr.net/gh/Aleperix/hittheballs@main/blog/xo-galaxy/menu.png" alt="Menú principal de HitTheBalls">
+  <p class="htb-caption">El menú, fiel al original: tres niveles de dificultad.</p>
+
+  <p>HitTheBalls es una actividad libre del ecosistema <b>Sugar Labs/OLPC</b>, creada por <b>Laurent Bernabe</b> (2013) para practicar el cálculo mental rápido en el aula. Esta versión <b>Reborn</b> la rescata con fidelidad 1:1: mismas reglas, pantallas, fuentes, colores y hasta el typo original <em>&laquo;Gave over!&raquo;</em>.</p>
+
+  <p>Corre nativo en <b>Android</b> (teléfonos, tablets y <b>Android TV</b>) y en escritorio Linux, en dos builds: <b>Godot 3.6 + GLES2</b> (retro, ligero incluso en hardware humilde, para cajas GLES 2.0-only) y <b>Godot 4 + Compatibility</b> (GLES3, targetSdk 36, para dispositivos modernos).</p>
+
+  <!-- CAPTURA 2: Una ronda en juego -->
+  <img src="https://cdn.jsdelivr.net/gh/Aleperix/hittheballs@main/blog/xo-galaxy/gameplay.png" alt="Una ronda de HitTheBalls en juego">
+  <p class="htb-caption">Cinco bolas con operaciones y el resultado objetivo en la barra superior.</p>
+
+  <h2>Cómo se juega</h2>
+  <ul>
+    <li>Cada ronda lanza <b>5 bolas</b> con operaciones (suma, resta, multiplicación y división entera) y muestra un <b>resultado objetivo</b> en la barra superior.</li>
+    <li>Hay que tocar <b>todas</b> las bolas cuyo resultado coincida antes de que se agote la barra (<b>30 segundos</b>).</li>
+    <li>Acierto = <b>+1 punto</b> y ronda nueva; error = game over. Tienes <b>3 niveles</b> de dificultad.</li>
+  </ul>
+
+  <!-- CAPTURA 3: Game over por respuesta incorrecta -->
+  <img src="https://cdn.jsdelivr.net/gh/Aleperix/hittheballs@main/blog/xo-galaxy/gameover-incorrecto.png" alt="Fin de partida por respuesta incorrecta en HitTheBalls">
+  <p class="htb-caption">Elegiste mal una bola: fin de la partida.</p>
+
+  <!-- CAPTURA 4: Game over por tiempo agotado -->
+  <img src="https://cdn.jsdelivr.net/gh/Aleperix/hittheballs@main/blog/xo-galaxy/gameover-tiempo.png" alt="Fin de partida por tiempo agotado en HitTheBalls">
+  <p class="htb-caption">Se acabó el tiempo: <em>&laquo;Gave over!&raquo;</em>, typo del original incluido.</p>
+
+  <h2>Descargar</h2>
+  <p>Elige el APK según tu dispositivo. Los botones siempre funcionan; con conexión se actualizan solos con la información de GitHub (versión y tamaño).</p>
+
+  <div class="htb-downloads" id="htbDownloads">
+    <a class="htb-btn" data-arch="Godot4-ARM64" href="https://github.com/Aleperix/hittheballs/releases/latest/download/HitTheBalls-Godot4-ARM64.apk">
+      <span>Godot 4 · ARM64</span>
+      <small>Dispositivos modernos<br><span class="htb-btn-size"></span></small>
+    </a>
+    <a class="htb-btn" data-arch="Godot4-X86_64" href="https://github.com/Aleperix/hittheballs/releases/latest/download/HitTheBalls-Godot4-X86_64.apk">
+      <span>Godot 4 · X86_64</span>
+      <small>Emuladores y tablets modernos<br><span class="htb-btn-size"></span></small>
+    </a>
+    <a class="htb-btn" data-arch="ARM64" href="https://github.com/Aleperix/hittheballs/releases/latest/download/HitTheBalls-ARM64.apk">
+      <span>ARM64</span>
+      <small>Cajas y teléfonos (GLES2)<br><span class="htb-btn-size"></span></small>
+    </a>
+    <a class="htb-btn" data-arch="ARM32" href="https://github.com/Aleperix/hittheballs/releases/latest/download/HitTheBalls-ARM32.apk">
+      <span>ARM32</span>
+      <small>Teléfonos y cajas antiguos<br><span class="htb-btn-size"></span></small>
+    </a>
+    <a class="htb-btn" data-arch="X86" href="https://github.com/Aleperix/hittheballs/releases/latest/download/HitTheBalls-X86.apk">
+      <span>X86</span>
+      <small>Emuladores y tablets Intel<br><span class="htb-btn-size"></span></small>
+    </a>
+  </div>
+
+  <div class="htb-status">
+    <span class="htb-dot off" id="htbDot"></span><span id="htbStatus">Esperando conexión…</span>
+    <button type="button" id="htbRefresh" title="Fuerza una comprobación en GitHub">Actualizar</button>
+  </div>
+
+  <p class="htb-src htb-muted">¿Prefieres el código o compilarlo tú? Repo: <a href="https://github.com/Aleperix/hittheballs">github.com/Aleperix/hittheballs</a>. Los APKs se generan con Godot 3.6 y Godot 4 y se firman con el mismo keystore.</p>
+
+  <h2>Instalación paso a paso</h2>
+  <ol>
+    <li>Descarga el APK de la <b>ARM64</b> (o el que corresponda a tu dispositivo).</li>
+    <li>En el teléfono, abre Ajustes → Seguridad y activa <b>&laquo;Orígenes desconocidos&raquo;</b> (o &laquo;Permitir esta fuente&raquo;) para el navegador o el gestor de archivos.</li>
+    <li>Toca el APK descargado y pulsa <b>Instalar</b>.</li>
+    <li>Para <b>Android TV</b>: copia el APK a un USB y usa un gestor de archivos, o envíalo por ADB (<code>adb install HitTheBalls-ARM64.apk</code>).</li>
+    <li>Si ya tenías una versión anterior, la instalación <b>actualiza</b> sin borrar tu puntuación máxima.</li>
+  </ol>
+
+  <h2>Novedades y changelog</h2>
+  <p class="htb-muted" id="htbChangelogNote">Cargando el historial de versiones…</p>
+  <div class="htb-acc" id="htbChangelog"></div>
+
+  <div class="htb-teaser">
+    <b>Estén atentos…</b> HitTheBalls es parte del catálogo de <b>XO Galaxy</b>: portamos los clásicos de la XO a Android con el kit <b>gx</b>. Si quieres aportar (traducciones, ideas, código), todo es bienvenido: <a href="https://github.com/Aleperix/hittheballs">contribuye en GitHub</a>.
+  </div>
+
+  <h2>Contribuye</h2>
+  <p>El proyecto es <b>código abierto</b> (GPL-3.0+). Puedes:</p>
+  <ul>
+    <li>Reportar errores o pedir ideas en <a href="https://github.com/Aleperix/hittheballs/issues">Issues</a>.</li>
+    <li>Proponer mejoras (más modos, sonidos, niveles) con un pull request.</li>
+    <li>Probarlo en tu dispositivo y contarnos cómo funciona.</li>
+  </ul>
+
+  <h2>Créditos</h2>
+
+  <div class="htb-credits">
+    <h3>HitTheBalls</h3>
+    <div class="htb-credits-block">
+      <p class="htb-credits-role">Creador original</p>
+      <p class="htb-credits-name">Laurent Bernabe (2013) — actividad Sugar</p>
+      <p class="htb-credits-role">Port a Godot por</p>
+      <p class="htb-credits-name">Aleperix</p>
+      <p class="htb-credits-role">Hecho para XO Galaxy</p>
+    </div>
+    <div class="htb-credits-block">
+      <p class="htb-credits-role">Agradecimientos</p>
+      <p class="htb-credits-name">SugarLabs — quienes hicieron posible esta actividad en las XO</p>
+      <p class="htb-credits-name"><a href="https://github.com/sugarlabs/hittheballs-activity">github.com/sugarlabs/hittheballs-activity</a></p>
+    </div>
+  </div>
+
+  <p class="htb-foot htb-muted">Hecho con Godot 3 · GLES2 · Código abierto · Juegos XO forever.</p>
+
+  <script>
+  //<![CDATA[
+  (function () {
+    var REPO = "Aleperix/hittheballs";
+    var KEY = "htb_releases";
+    var CACHE_SCHEMA = 2;
+    var TTL = 12 * 3600e3;
+
+    var $ = function (id) { return document.getElementById(id); };
+    var dot = $("htbDot"), status = $("htbStatus"), note = $("htbChangelogNote"),
+        acc = $("htbChangelog"), refreshBtn = $("htbRefresh");
+
+    function readCache() {
+      try {
+        var raw = localStorage.getItem(KEY);
+        if (!raw) return null;
+        var rec = JSON.parse(raw);
+        if (!rec || rec.schema !== CACHE_SCHEMA || !rec.t || Date.now() - rec.t > TTL) return null;
+        return rec;
+      } catch (e) { return null; }
+    }
+
+    function writeCache(data, etag) {
+      try {
+        var rec = { t: Date.now(), schema: CACHE_SCHEMA, data: data, etag: etag || "" };
+        localStorage.setItem(KEY, JSON.stringify(rec));
+      } catch (e) {}
+    }
+
+    function esc(s) {
+      return String(s).replace(/[&<>"']/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+      });
+    }
+
+    function inline(s) {
+      return esc(s)
+        .replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>")
+        .replace(/`([^`]+)`/g, "<code>$1</code>")
+        .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2">$1</a>');
+    }
+
+    function mdToHtml(md) {
+      if (!md) return "";
+      var out = [], para = [], lines = md.split(/\r?\n/), i = 0;
+      var flush = function () { if (para.length) { out.push("<p>" + para.join(" ") + "</p>"); para = []; } };
+      while (i < lines.length) {
+        var t = lines[i].trim();
+        if (!t) { flush(); i++; continue; }
+        var h = /^(#{1,6})\s+(.*)$/.exec(t);
+        if (h) { flush(); var lvl = Math.min(6, h[1].length + 1); out.push("<h" + lvl + ">" + inline(h[2]) + "</h" + lvl + ">"); i++; continue; }
+        if (t.indexOf("- ") === 0 || t.indexOf("* ") === 0) {
+          flush();
+          var lis = [];
+          while (i < lines.length) {
+            var tt = lines[i].trim();
+            if (tt.indexOf("- ") === 0 || tt.indexOf("* ") === 0) { lis.push("<li>" + inline(tt.slice(2)) + "</li>"); i++; }
+            else break;
+          }
+          out.push("<ul>" + lis.join("") + "</ul>");
+          continue;
+        }
+        if (/^#{4,}/.test(t)) { i++; continue; }
+        para.push(inline(t));
+        i++;
+      }
+      flush();
+      return out.join("");
+    }
+
+    function fmtDate(iso) {
+      if (!iso) return "";
+      try {
+        var d = new Date(iso);
+        return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+      } catch (e) { return ""; }
+    }
+
+    function updateButtons(releases) {
+      var links = document.querySelectorAll("#htbDownloads .htb-btn");
+      links.forEach(function (a) {
+        var arch = a.getAttribute("data-arch");
+        var name = "HitTheBalls-" + arch + ".apk";
+        var size = a.querySelector(".htb-btn-size");
+        var parts = [];
+        if (releases && releases.length) {
+          var r = releases[0];
+          if (r.tag_name) parts.push(r.tag_name);
+          var asset = (r.assets || []).filter(function (x) { return x.name === name; })[0];
+          if (asset && asset.size) parts.push(Math.round(asset.size / 1048576) + " MB");
+        }
+        if (size) size.textContent = parts.join("\u00b7");
+      });
+    }
+
+    function setStatus(releases, rate) {
+      var latest = releases && releases[0];
+      if (latest && latest.tag_name) {
+        dot.className = "htb-dot on";
+        status.textContent = "Publicado en GitHub: " + latest.tag_name +
+          (releases.length > 1 ? "\u00b7 " + releases.length + " versiones" : "") +
+          (rate ? "\u00b7 " + rate + " consultas restantes" : "");
+      } else {
+        dot.className = "htb-dot off";
+        status.textContent = "Sin conexi\u00f3n: los botones llevan a la versi\u00f3n publicada en GitHub.";
+      }
+    }
+
+    function render(releases, rate) {
+      note.style.display = "none";
+      acc.innerHTML = "";
+      releases = releases.slice(0, 12);
+      releases.forEach(function (r, i) {
+        var body = mdToHtml(r.body || "");
+        var assets = (r.assets || []).map(function (a) {
+          return '<div><a href="' + esc(a.browser_download_url) + '">' + esc(a.name) +
+                 '</a> <span class="htb-muted">(' + Math.round((a.size || 0) / 1048576) + " MB)</span></div>";
+        }).join("");
+        var d = document.createElement("details");
+        if (i === 0) d.setAttribute("open", "");
+        d.innerHTML = '<summary><span>' + esc(r.tag_name || r.name) +
+          '</span><span class="htb-acc-date">' + fmtDate(r.published_at) + "</span></summary>" +
+          '<div class="htb-acc-body">' + body + (assets ? "<div>" + assets + "</div>" : "") + "</div>";
+        acc.appendChild(d);
+      });
+      updateButtons(releases);
+      setStatus(releases, rate);
+    }
+
+    var JSON_URL = "https://cdn.jsdelivr.net/gh/" + REPO + "@main/blog/xo-galaxy/releases.json";
+    var API_URL = "https://api.github.com/repos/" + REPO + "/releases?per_page=100";
+
+    function fetchReleases(force) {
+      var cached = readCache();
+      if (cached && !force) {
+        render(cached.data);
+        return;
+      }
+      setStatus(null);
+      fetch(JSON_URL, { cache: "no-store" })
+        .then(function (res) {
+          if (!res.ok) throw new Error("jsdelivr " + res.status);
+          return res.json();
+        })
+        .then(function (data) {
+          if (!Array.isArray(data) || !data.length) throw new Error("no data");
+          writeCache(data, "");
+          render(data);
+        })
+        .catch(function () {
+          fetchGithub(cached);
+        });
+    }
+
+    function fetchGithub(cached) {
+      var headers = {};
+      if (cached && cached.etag) headers["If-None-Match"] = cached.etag;
+      fetch(API_URL, { headers: headers })
+        .then(function (res) {
+          if (res.status === 304 && cached) {
+            writeCache(cached.data, cached.etag);
+            render(cached.data);
+            return;
+          }
+          if (!res.ok) {
+            if (cached) render(cached.data);
+            else setStatus(null);
+            return;
+          }
+          var etag = res.headers.get("ETag") || "";
+          var remaining = res.headers.get("X-RateLimit-Remaining");
+          return res.json().then(function (data) {
+            if (!Array.isArray(data) || !data.length) throw new Error("no data");
+            writeCache(data, etag);
+            render(data, remaining);
+          });
+        })
+        .catch(function () {
+          if (cached) render(cached.data);
+          else setStatus(null);
+        });
+    }
+
+    refreshBtn.addEventListener("click", function () { fetchReleases(true); });
+    var c = readCache();
+    if (c) render(c.data);
+    fetchReleases(false);
+  })();
+  //]]>
+  </script>
+
+</div>

@@ -182,9 +182,9 @@
       });
   }
 
-  // ---- Limpieza de cachés de descargas (tbr_*) ----
+  // ---- Limpieza de cachés de descargas (tbr_*, htb_*) ----
   function cleanupDownloadCache() {
-    var PREFIX = "tbr_",
+    var PREFIXES = ["tbr_", "htb_"],
       MAX_AGE = 30 * 24 * 3600e3,
       MAX_BYTES = 2 * 1024 * 1024;
     try {
@@ -193,7 +193,12 @@
         changed = false;
       for (var i = 0; i < localStorage.length; i++) {
         var k = localStorage.key(i);
-        if (!k || k.indexOf(PREFIX) !== 0) continue;
+        if (!k) continue;
+        var matched = false;
+        for (var p = 0; p < PREFIXES.length; p++) {
+          if (k.indexOf(PREFIXES[p]) === 0) { matched = true; break; }
+        }
+        if (!matched) continue;
         var raw = localStorage.getItem(k);
         total += raw ? raw.length : 0;
         var rec = null;

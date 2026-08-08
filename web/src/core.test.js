@@ -58,13 +58,15 @@ describe("core DOM helpers", () => {
     expect(h1.querySelectorAll(".text-signal").length).toBe(1);
   });
 
-  it("cleanupDownloadCache elimina recetas expiradas tbr_", () => {
+  it("cleanupDownloadCache elimina recetas expiradas tbr_ y htb_", () => {
     localStorage.setItem("tbr_viejo", JSON.stringify({ t: Date.now() - 40 * 24 * 3600e3 }));
     localStorage.setItem("tbr_nuevo", JSON.stringify({ t: Date.now() }));
+    localStorage.setItem("htb_viejo", JSON.stringify({ t: Date.now() - 40 * 24 * 3600e3 }));
     localStorage.setItem("otro", "x");
     window.XOGalaxy.core.cleanupDownloadCache();
     expect(localStorage.getItem("tbr_viejo")).toBeNull();
     expect(localStorage.getItem("tbr_nuevo")).not.toBeNull();
+    expect(localStorage.getItem("htb_viejo")).toBeNull();
     expect(localStorage.getItem("otro")).toBe("x");
   });
 });
