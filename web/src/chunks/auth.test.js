@@ -141,4 +141,86 @@ describe("chunk auth", () => {
     expect(window.XOGalaxy.auth.getProfile()).toBeNull();
     expect(window.XOGalaxy.auth.getToken()).toBeNull();
   });
+
+  it("persiste token+perfil en sessionStorage al verificar", async () => {
+    vi.stubGlobal("fetch", async () =>
+      new Response(JSON.stringify({ sub: "s1", name: "Ana", picture: "p", isOwner: false }), { status: 200 })
+    );
+    window.XOGalaxy.auth._handleCredential({ credential: "jwt.persist" });
+    await flush();
+    expect(sessionStorage.getItem("xogalaxy_token")).toBe("jwt.persist");
+    expect(JSON.parse(sessionStorage.getItem("xogalaxy_profile"))).toMatchObject({ sub: "s1" });
+  });
+
+  it("init restaura sesión guardada y re-verifica en el backend", async () => {
+    sessionStorage.setItem("xogalaxy_token", "stored.jwt");
+    sessionStorage.setItem("xogalaxy_profile", JSON.stringify({ sub: "s9", name: "Sesi", picture: "", isOwner: false }));
+    let verified = false;
+    vi.stubGlobal("fetch", async (url) => {
+      const u = new URL(url);
+      if (u.pathname === "/auth/verify") {
+        verified = true;
+        return new Response(
+          JSON.stringify({ sub: "s9", name: "Sesi", picture: "", isOwner: true }),
+          { status: 200 }
+        );
+      }
+      if (u.pathname === "/auth/config") {
+        return new Response(JSON.stringify({ clientId: "" }), { status: 200 });
+      }
+      return new Response("{}", { status: 200 });
+    });
+
+    window.XOGalaxy.auth.init();
+    expect(window.XOGalaxy.auth.getToken()).toBe("stored.jwt");
+    expect(window.XOGalaxy.auth.getProfile()).toMatchObject({ sub: "s9" });
+    await flush();
+    await flush();
+    expect(verified).toBe(true);
+    expect(window.XOGalaxy.auth.getProfile()).toMatchObject({ sub: "s9", isOwner: true });
+  });
+
+  it("restore con token vencido limpia token, perfil y storage", async () => {
+    sessionStorage.setItem("xogalaxy_token", "expired.jwt");
+    sessionStorage.setItem("xogalaxy_profile", JSON.stringify({ sub: "s9", name: "Viejo" }));
+    vi.stubGlobal("fetch", async (url) => {
+      const u = new URL(url);
+      if (u.pathname === "/auth/verify") {
+        return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401 });
+      }
+      if (u.pathname === "/auth/config") {
+        return new Response(JSON.stringify({ clientId: "" }), { status: 200 });
+      }
+      return new Response("{}", { status: 200 });
+    });
+    window.XOGalaxy.auth.init();
+    expect(window.XOGalaxy.auth.getProfile()).toMatchObject({ sub: "s9" });
+    await flush();
+    await flush();
+    expect(window.XOGalaxy.auth.getToken()).toBeNull();
+    expect(window.XOGalaxy.auth.getProfile()).toBeNull();
+    expect(sessionStorage.getItem("xogalaxy_token")).toBeNull();
+    expect(sessionStorage.getItem("xogalaxy_profile")).toBeNull();
+  });
+
+  it("logout limpia sessionStorage", async () => {
+    window.google = {
+      accounts: {
+        id: {
+          initialize() {},
+          renderButton() {},
+          disableAutoSelect() {},
+        },
+      },
+    };
+    vi.stubGlobal("fetch", async () =>
+      new Response(JSON.stringify({ sub: "s1", name: "Ana", picture: "p", isOwner: false }), { status: 200 })
+    );
+    window.XOGalaxy.auth._handleCredential({ credential: "jwt" });
+    await flush();
+    expect(sessionStorage.getItem("xogalaxy_token")).toBe("jwt");
+    window.XOGalaxy.auth.logout();
+    expect(sessionStorage.getItem("xogalaxy_token")).toBeNull();
+    expect(sessionStorage.getItem("xogalaxy_profile")).toBeNull();
+  });
 });

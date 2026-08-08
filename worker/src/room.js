@@ -68,22 +68,39 @@ export class Room extends DurableObject {
     } catch (err) {
       return;
     }
-    if (data?.type !== "chat") return;
+    if (data?.type === "chat") {
+      const attachment = ws.deserializeAttachment?.() || {};
+      let room;
+      try {
+        room = this.ctx.getTags(ws)[0];
+      } catch (err) {
+        room = null;
+      }
+      room = (room || attachment.room || "general").slice(0, 64);
+      const nickname = String(attachment.nickname || "Anónimo").slice(0, NICK_MAX);
+      const body = String(data.body || "").trim().slice(0, BODY_MAX);
+      if (!body) return;
 
-    const attachment = ws.deserializeAttachment?.() || {};
-    let room;
-    try {
-      room = this.ctx.getTags(ws)[0];
-    } catch (err) {
-      room = null;
+      const author = await this.verifiedAuthor(data.token);
+      await this.sendMessage(room, nickname, body, author);
+      return;
     }
-    room = (room || attachment.room || "general").slice(0, 64);
-    const nickname = String(attachment.nickname || "Anónimo").slice(0, NICK_MAX);
-    const body = String(data.body || "").trim().slice(0, BODY_MAX);
-    if (!body) return;
 
-    const author = await this.verifiedAuthor(data.token);
-    await this.sendMessage(room, nickname, body, author);
+    if (data?.type === "reaction") {
+      const room = this.roomOf(ws);
+      const messageId = Number(data.messageId);
+      const reaction = String(data.reaction || "").trim().slice(0, 32);
+      if (!Number.isInteger(messageId) || !reaction) return;
+      this.broadcast(room, { type: "reaction", messageId, reaction });
+    }
+  }
+
+  roomOf(ws) {
+    try {
+      return this.ctx.getTags(ws)[0] || "general";
+    } catch (err) {
+      return (ws.deserializeAttachment?.() || {}).room || "general";
+    }
   }
 
   async webSocketClose(ws, code, reason, wasClean) {

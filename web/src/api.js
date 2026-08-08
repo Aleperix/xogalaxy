@@ -97,6 +97,52 @@
     return post("/comments/delete", { id: id, token: token || null });
   }
 
+  // ---- aportes (tool de posts) ----
+  function postsCreate(data) {
+    return post("/posts", data);
+  }
+  function postsPending(token) {
+    return get("/posts/pending", { "X-XOGALAXY-Token": token });
+  }
+  function postsApproved(token) {
+    return get("/posts/approved", { "X-XOGALAXY-Token": token });
+  }
+  function postsReview(id, action, token) {
+    return post("/posts/mod/review", { id: id, action: action }, { "X-XOGALAXY-Token": token });
+  }
+  function postsDelete(id, token) {
+    return post("/posts/delete", { id: id, token: token || null });
+  }
+  function postsSetUrl(id, url, token) {
+    return post("/posts/url", { id: id, url: url }, { "X-XOGALAXY-Token": token });
+  }
+
+  // ---- releases (proxy GitHub) ----
+  function release(url) {
+    return get("/releases?url=" + encodeURIComponent(url));
+  }
+
+  // ---- engagement (ratings + reacciones) ----
+  function ratingGet(target, user) {
+    var url = "/rating?target=" + encodeURIComponent(target);
+    if (user) url += "&user=" + encodeURIComponent(user);
+    return get(url);
+  }
+  function ratingSet(target, value, user, token) {
+    return post("/rating", { target: target, value: value, user: user, token: token || null });
+  }
+  function reactionGet(target) {
+    return get("/reaction?target=" + encodeURIComponent(target));
+  }
+  function reactionSet(target, type, user, token) {
+    return post("/reaction", { target: target, type: type, user: user, token: token || null });
+  }
+  function engagement(targets, user) {
+    var url = "/engagement?targets=" + encodeURIComponent(targets.join(","));
+    if (user) url += "&user=" + encodeURIComponent(user);
+    return get(url);
+  }
+
   X.api = {
     followers: followers,
     visits: visits,
@@ -114,6 +160,18 @@
       modReview: commentsModReview,
       remove: commentsDelete,
     },
+    posts: {
+      create: postsCreate,
+      modPending: postsPending,
+      modApproved: postsApproved,
+      modReview: postsReview,
+      remove: postsDelete,
+      setUrl: postsSetUrl,
+    },
+    release: release,
+    rating: { get: ratingGet, set: ratingSet },
+    reaction: { get: reactionGet, set: reactionSet },
+    engagement: engagement,
   };
   X.config = { backend: BACKEND };
 })(window);

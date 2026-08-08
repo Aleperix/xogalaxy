@@ -4,6 +4,9 @@ import { getFollowers } from "./followers.js";
 import { urlsFromSitemap, saveToWayback } from "./wayback.js";
 import { Auth, isOwner } from "./auth.js";
 import * as comments from "./comments.js";
+import * as posts from "./posts.js";
+import * as engagement from "./engagement.js";
+import { fetchRelease } from "./releases.js";
 
 export { Stats } from "./stats.js";
 export { Room } from "./room.js";
@@ -18,10 +21,29 @@ const COMMENT_RATE_LIMIT = 10;
 const COMMENT_BODY_MAX = 4000;
 const COMMENT_POST_ID_MAX = 200;
 const CHAT_ROOMS = ["general"];
+const POST_TITLE_MAX = 200;
+const POST_BODY_MAX = 20000;
+const POST_URL_MAX = 500;
+const POST_RATE_LIMIT = 10;
+const RELEASES_RATE_LIMIT = 60;
+const RELEASES_CACHE = "public, max-age=3600";
+const RATING_RATE_LIMIT = 30;
+const REACTION_RATE_LIMIT = 30;
+const ENGAGEMENT_TARGETS_MAX = 50;
 
 async function ensureComments(db) {
   const row = await db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='comments'`).first();
   if (!row) await comments.migrate(db);
+}
+
+async function ensurePosts(db) {
+  const row = await db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='posts'`).first();
+  if (!row) await posts.migrate(db);
+}
+
+async function ensureEngagement(db) {
+  const row = await db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='ratings'`).first();
+  if (!row) await engagement.migrate(db);
 }
 
 export default {
@@ -79,6 +101,26 @@ export default {
           return handleCommentsExport(request, env, origin);
         case "/comments/import":
           return handleCommentsImport(request, env, origin);
+        case "/posts":
+          return handlePosts(request, env, origin);
+        case "/posts/pending":
+          return handlePostsPending(request, env, origin);
+        case "/posts/approved":
+          return handlePostsApproved(request, env, origin);
+        case "/posts/mod/review":
+          return handlePostsReview(request, env, origin);
+        case "/posts/delete":
+          return handlePostsDelete(request, env, origin);
+        case "/posts/url":
+          return handlePostsUrl(request, env, origin);
+        case "/releases":
+          return handleReleases(request, env, origin);
+        case "/rating":
+          return handleRating(request, env, origin);
+        case "/reaction":
+          return handleReaction(request, env, origin);
+        case "/engagement":
+          return handleEngagement(request, env, origin);
         default:
           return json({ error: "not found" }, 404, cors(origin));
       }
@@ -379,6 +421,261 @@ async function handleCommentsImport(request, env, origin) {
   return json({ imported }, 200, cors(origin));
 }
 
+// ---- posts (tool de aportes) ----
+
+async function handlePosts(request, env, origin) {
+  if (request.method !== "POST") {
+    return json({ error: "method not allowed" }, 405, cors(origin));
+  }
+  await ensurePosts(env.DB);
+  if (await rateLimited(env, request, "posts", POST_RATE_LIMIT)) {
+    return json({ error: "rate limited" }, 429, cors(origin));
+  }
+  let body;
+  try {
+    body = await request.json();
+  } catch (err) {
+    return json({ error: "invalid json" }, 400, cors(origin));
+  }
+  const title = String(body.title || "").trim().slice(0, POST_TITLE_MAX);
+  const text = String(body.body || "").trim().slice(0, POST_BODY_MAX);
+  if (!title || !text) {
+    return json({ error: "title and body required" }, 400, cors(origin));
+  }
+  let author = { sub: null, name: String(body.name || "").trim().slice(0, 40) };
+  if (body.token) {
+    const profile = await verifyProfile(env, body.token);
+    if (!profile) return json({ error: "unauthorized" }, 401, cors(origin));
+    author = profile;
+  }
+  const created = await posts.createPost(env.DB, { title, body: text, author });
+  return json({ post: created }, 201, cors(origin));
+}
+
+async function handlePostsPending(request, env, origin) {
+  const who = await ownerFromRequest(env, request);
+  if (!who) {
+    return json({ error: "unauthorized" }, 401, cors(origin));
+  }
+  await ensurePosts(env.DB);
+  const items = await posts.pendingPosts(env.DB);
+  return json({ posts: items }, 200, cors(origin));
+}
+
+async function handlePostsApproved(request, env, origin) {
+  const who = await ownerFromRequest(env, request);
+  if (!who) {
+    return json({ error: "unauthorized" }, 401, cors(origin));
+  }
+  await ensurePosts(env.DB);
+  const items = await posts.approvedPosts(env.DB);
+  return json({ posts: items }, 200, cors(origin));
+}
+
+async function handlePostsReview(request, env, origin) {
+  if (request.method !== "POST") {
+    return json({ error: "method not allowed" }, 405, cors(origin));
+  }
+  let body;
+  try {
+    body = await request.json();
+  } catch (err) {
+    return json({ error: "invalid json" }, 400, cors(origin));
+  }
+  const who = await ownerFromRequest(env, request, body);
+  if (!who) {
+    return json({ error: "unauthorized" }, 401, cors(origin));
+  }
+  const id = Number(body.id);
+  const action = String(body.action || "");
+  if (!Number.isInteger(id) || !["approve", "reject"].includes(action)) {
+    return json({ error: "id and action required" }, 400, cors(origin));
+  }
+  await ensurePosts(env.DB);
+  const row = await posts.reviewPost(
+    env.DB,
+    id,
+    action === "approve" ? posts.POST_STATUS.APPROVED : posts.POST_STATUS.REJECTED
+  );
+  return json({ post: row }, row ? 200 : 404, cors(origin));
+}
+
+async function handlePostsDelete(request, env, origin) {
+  if (request.method !== "POST") {
+    return json({ error: "method not allowed" }, 405, cors(origin));
+  }
+  let body;
+  try {
+    body = await request.json();
+  } catch (err) {
+    return json({ error: "invalid json" }, 400, cors(origin));
+  }
+  const id = Number(body.id);
+  if (!Number.isInteger(id)) {
+    return json({ error: "id required" }, 400, cors(origin));
+  }
+  await ensurePosts(env.DB);
+  const who = await ownerFromRequest(env, request, body);
+  let authorSub = null;
+  if (!who && body.token) {
+    const profile = await verifyProfile(env, body.token);
+    if (profile) authorSub = isOwner(env, profile.sub) ? null : profile.sub;
+  }
+  if (!who && !authorSub) {
+    return json({ error: "unauthorized" }, 401, cors(origin));
+  }
+  const row = await posts.deletePost(env.DB, id, authorSub);
+  return json({ ok: Boolean(row) }, row ? 200 : 404, cors(origin));
+}
+
+async function handlePostsUrl(request, env, origin) {
+  if (request.method !== "POST") {
+    return json({ error: "method not allowed" }, 405, cors(origin));
+  }
+  let body;
+  try {
+    body = await request.json();
+  } catch (err) {
+    return json({ error: "invalid json" }, 400, cors(origin));
+  }
+  const who = await ownerFromRequest(env, request, body);
+  if (!who) {
+    return json({ error: "unauthorized" }, 401, cors(origin));
+  }
+  const id = Number(body.id);
+  const url = String(body.url || "").trim().slice(0, POST_URL_MAX);
+  if (!Number.isInteger(id) || !url) {
+    return json({ error: "id and url required" }, 400, cors(origin));
+  }
+  await ensurePosts(env.DB);
+  const row = await posts.setPostUrl(env.DB, id, url);
+  return json({ post: row }, row ? 200 : 404, cors(origin));
+}
+
+// ---- releases (proxy GitHub) ----
+
+async function handleReleases(request, env, origin) {
+  if (request.method !== "GET") {
+    return json({ error: "method not allowed" }, 405, cors(origin));
+  }
+  const url = new URL(request.url).searchParams.get("url") || "";
+  if (!url) {
+    return json({ error: "url required" }, 400, cors(origin));
+  }
+  if (await rateLimited(env, request, "releases", RELEASES_RATE_LIMIT)) {
+    return json({ error: "rate limited" }, 429, cors(origin));
+  }
+  try {
+    const data = await fetchRelease(env, url);
+    return json(data, 200, Object.assign({}, cors(origin), { "Cache-Control": RELEASES_CACHE }));
+  } catch (err) {
+    console.error("releases error:", err.message);
+    return json({ error: "release unavailable" }, 502, Object.assign({}, cors(origin), { "Cache-Control": RELEASES_CACHE }));
+  }
+}
+
+// ---- engagement (ratings + reacciones) ----
+
+async function handleRating(request, env, origin) {
+  const url = new URL(request.url);
+  await ensureEngagement(env.DB);
+  if (request.method === "GET") {
+    const target = engagement.sanitizeTarget(url.searchParams.get("target"));
+    if (!target) return json({ error: "target required" }, 400, cors(origin));
+    const user = engagement.sanitizeUser(url.searchParams.get("user"));
+    const summary = await engagement.ratingSummary(env.DB, target, user || null);
+    return json(summary, 200, cors(origin));
+  }
+  if (request.method === "POST") {
+    if (await rateLimited(env, request, "rating", RATING_RATE_LIMIT)) {
+      return json({ error: "rate limited" }, 429, cors(origin));
+    }
+    let body;
+    try {
+      body = await request.json();
+    } catch (err) {
+      return json({ error: "invalid json" }, 400, cors(origin));
+    }
+    const target = engagement.sanitizeTarget(body.target);
+    const value = Number(body.value);
+    if (!target || !Number.isInteger(value) || value < 0 || value > engagement.RATING_MAX) {
+      return json({ error: "target and value (0..5) required" }, 400, cors(origin));
+    }
+    let user = engagement.sanitizeUser(body.user);
+    if (!user && body.token) {
+      const profile = await verifyProfile(env, body.token);
+      if (!profile) return json({ error: "unauthorized" }, 401, cors(origin));
+      user = engagement.sanitizeUser(profile.sub);
+    }
+    if (!user) {
+      return json({ error: "user required" }, 400, cors(origin));
+    }
+    const summary = await engagement.rate(env.DB, { target, user, value });
+    return json(summary, 200, cors(origin));
+  }
+  return json({ error: "method not allowed" }, 405, cors(origin));
+}
+
+async function handleReaction(request, env, origin) {
+  const url = new URL(request.url);
+  await ensureEngagement(env.DB);
+  if (request.method === "GET") {
+    const target = engagement.sanitizeTarget(url.searchParams.get("target"));
+    if (!target) return json({ error: "target required" }, 400, cors(origin));
+    const counts = await engagement.reactionCounts(env.DB, target);
+    return json(counts, 200, cors(origin));
+  }
+  if (request.method === "POST") {
+    if (await rateLimited(env, request, "reaction", REACTION_RATE_LIMIT)) {
+      return json({ error: "rate limited" }, 429, cors(origin));
+    }
+    let body;
+    try {
+      body = await request.json();
+    } catch (err) {
+      return json({ error: "invalid json" }, 400, cors(origin));
+    }
+    const target = engagement.sanitizeTarget(body.target);
+    const type = engagement.sanitizeType(body.type);
+    if (!target || !type) {
+      return json({ error: "target and type required" }, 400, cors(origin));
+    }
+    let user = engagement.sanitizeUser(body.user);
+    if (!user && body.token) {
+      const profile = await verifyProfile(env, body.token);
+      if (!profile) return json({ error: "unauthorized" }, 401, cors(origin));
+      user = engagement.sanitizeUser(profile.sub);
+    }
+    if (!user) {
+      return json({ error: "user required" }, 400, cors(origin));
+    }
+    const counts = await engagement.react(env.DB, { target, user, type });
+    return json(counts, 200, cors(origin));
+  }
+  return json({ error: "method not allowed" }, 405, cors(origin));
+}
+
+async function handleEngagement(request, env, origin) {
+  if (request.method !== "GET") {
+    return json({ error: "method not allowed" }, 405, cors(origin));
+  }
+  const url = new URL(request.url);
+  await ensureEngagement(env.DB);
+  const targets = (url.searchParams.get("targets") || "")
+    .split(",")
+    .map(engagement.sanitizeTarget)
+    .filter(Boolean)
+    .slice(0, ENGAGEMENT_TARGETS_MAX);
+  if (!targets.length) {
+    return json({ error: "targets required" }, 400, cors(origin));
+  }
+  const user = engagement.sanitizeUser(url.searchParams.get("user"));
+  const ratings = {};
+  for (const t of targets) ratings[t] = await engagement.ratingSummary(env.DB, t, user || null);
+  const reactions = await engagement.reactionSummaries(env.DB, targets);
+  return json({ ratings, reactions }, 200, cors(origin));
+}
+
 // ---- followers / visits ----
 
 async function handleFollowers(request, env, origin) {
@@ -444,7 +741,11 @@ async function rateLimited(env, request, key, limit, windowSec = 3600) {
 
 async function buildBackup(env) {
   await ensureComments(env.DB);
+  await ensurePosts(env.DB);
+  await ensureEngagement(env.DB);
   const commentsExport = await comments.exportAll(env.DB);
+  const postsExport = await posts.exportAll(env.DB);
+  const engagementExport = await engagement.exportAll(env.DB);
   const chat = {};
   for (const room of CHAT_ROOMS) {
     const stub = env.ROOM.getByName(room);
@@ -452,8 +753,10 @@ async function buildBackup(env) {
   }
   return {
     exportedAt: new Date().toISOString(),
-    schema: 1,
+    schema: 3,
     comments: commentsExport,
+    posts: postsExport,
+    engagement: engagementExport,
     chat,
   };
 }
@@ -468,7 +771,7 @@ async function pushBackupToGitHub(env, backup) {
   for (const b of bytes) bin += String.fromCharCode(b);
   const content = btoa(bin);
   const date = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19) + "Z";
-  const path = `backups/comments-chat-${date}.json`;
+  const path = `backups/data-${date}.json`;
   const res = await fetch(`https://api.github.com/repos/${repo}/contents/${path}`, {
     method: "PUT",
     headers: {

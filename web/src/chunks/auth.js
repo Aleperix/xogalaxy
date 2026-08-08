@@ -3,8 +3,9 @@
  * Login con Google Identity Services (GIS). El client id se resuelve de forma
  * perezosa: primero window.XOGALAXY_CONFIG.googleClientId, luego el cache de
  * sessionStorage y por último GET /auth/config del backend (sin secretos).
- * El ID token se guarda solo en memoria (nada de localStorage); el perfil
- * verificado llega del backend (/auth/verify). Se corre X.hooks.run("auth")
+ * El ID token y el perfil verificado se guardan en sessionStorage (por pestaña,
+ * se limpian al cerrarla o al logout) para que la sesión sobreviva recargas;
+ * auto_select de GIS renueva el token cuando expira. Se corre X.hooks.run("auth")
  * tras login/logout para que comentarios y chat refresquen su identidad.
  */
 (function (global) {
@@ -12,6 +13,8 @@
 
   var X = (global.XOGalaxy = global.XOGalaxy || {});
   var STORAGE_KEY = "xogalaxy_client_id";
+  var TOKEN_KEY = "xogalaxy_token";
+  var PROFILE_KEY = "xogalaxy_profile";
 
   var CLIENT_ID = "";
   var token = null;
@@ -33,19 +36,53 @@
 
   function setProfile(p) {
     profile = p || null;
+    try {
+      if (profile) global.sessionStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+      else global.sessionStorage.removeItem(PROFILE_KEY);
+    } catch (err) {}
     emit();
+  }
+
+  function setToken(t) {
+    token = t || null;
+    try {
+      if (token) global.sessionStorage.setItem(TOKEN_KEY, token);
+      else global.sessionStorage.removeItem(TOKEN_KEY);
+    } catch (err) {}
   }
 
   function handleCredential(res) {
     if (!res || !res.credential) return;
-    token = res.credential;
+    setToken(res.credential);
     X.api
       .authVerify(token)
       .then(function (p) {
         setProfile(p);
       })
       .catch(function () {
-        token = null;
+        setToken(null);
+        setProfile(null);
+      });
+  }
+
+  function restoreSession() {
+    var t = null;
+    var p = null;
+    try {
+      t = global.sessionStorage.getItem(TOKEN_KEY);
+      var raw = global.sessionStorage.getItem(PROFILE_KEY);
+      p = raw ? JSON.parse(raw) : null;
+    } catch (err) {}
+    if (!t || !p) return;
+    token = t;
+    setProfile(p);
+    X.api
+      .authVerify(t)
+      .then(function (np) {
+        setProfile(np);
+      })
+      .catch(function () {
+        setToken(null);
         setProfile(null);
       });
   }
@@ -106,7 +143,7 @@
     global.google.accounts.id.initialize({
       client_id: CLIENT_ID,
       callback: handleCredential,
-      auto_select: false,
+      auto_select: true,
       cancel_on_tap_outside: true,
     });
     var btns = pendingButtons;
@@ -176,7 +213,7 @@
   }
 
   function logout() {
-    token = null;
+    setToken(null);
     setProfile(null);
     if (initialized) {
       try {
@@ -186,6 +223,7 @@
   }
 
   function init() {
+    restoreSession();
     ensureReady();
   }
 

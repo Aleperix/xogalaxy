@@ -98,6 +98,22 @@
       list.hidden = false;
     }
 
+    function insertComment(c) {
+      count += 1;
+      applyCount(count);
+      if (!loaded || !c || c.status !== "approved") return;
+      var li = commentEl(c);
+      var ref = null;
+      for (var i = 0; i < list.children.length; i++) {
+        if (Number(list.children[i].getAttribute("data-id")) > Number(c.id)) {
+          ref = list.children[i];
+          break;
+        }
+      }
+      if (ref) list.insertBefore(li, ref);
+      else list.appendChild(li);
+    }
+
     function loadList() {
       if (loaded) return Promise.resolve();
       loaded = true;
@@ -255,9 +271,10 @@
               approve.addEventListener("click", function () {
                 api.comments
                   .modReview(c.id, "approve", X.auth.getToken())
-                  .then(function () {
+                  .then(function (d) {
                     li.remove();
-                    loadCount();
+                    if (d && d.comment) insertComment(d.comment);
+                    else loadCount();
                   })
                   .catch(function () {});
               });

@@ -20,6 +20,9 @@
     X.stats.init();
     X.chat.init();
     X.comments.init();
+    X.posts.init();
+    X.releases.init();
+    X.engagement.init();
   }
 
   if (document.readyState === "loading") {
