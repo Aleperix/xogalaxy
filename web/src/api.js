@@ -43,6 +43,19 @@
     });
   }
 
+  function put(url, body, headers) {
+    return fetch(BACKEND + url, {
+      method: "PUT",
+      headers: Object.assign({ "Content-Type": "application/json", accept: "application/json" }, headers || {}),
+      body: JSON.stringify(body || {}),
+    }).then(function (r) {
+      return parse(r).then(function (d) {
+        if (!r.ok) throw apiError(r, d);
+        return d;
+      });
+    });
+  }
+
   function followers() {
     return get("/followers");
   }
@@ -165,6 +178,17 @@
     return get(url);
   }
 
+  // ---- perfiles (dialog de perfil) ----
+  function profilesGet(params) {
+    var q = "";
+    if (params && params.sub) q = "?sub=" + encodeURIComponent(params.sub);
+    else if (params && params.visitor) q = "?visitor=" + encodeURIComponent(params.visitor);
+    return get("/profiles" + q);
+  }
+  function profilesSave(data) {
+    return put("/profiles", data);
+  }
+
   X.api = {
     followers: followers,
     followersFollow: followersFollow,
@@ -194,6 +218,10 @@
       modReview: postsReview,
       remove: postsDelete,
       setUrl: postsSetUrl,
+    },
+    profiles: {
+      get: profilesGet,
+      save: profilesSave,
     },
     release: release,
     rating: { get: ratingGet, set: ratingSet },

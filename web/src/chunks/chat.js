@@ -33,8 +33,11 @@
     nickname = currentProfileName() || X.identity.guestName();
 
     var root = utils.el("div", "xogalaxy-chat");
-    var status = utils.el("p", "chat-status", "conectando…");
+    var status = utils.el("div", "chat-status");
+    var statusText = utils.el("span", "chat-status-text", "conectando…");
     var session = utils.el("div", "chat-session");
+    status.appendChild(statusText);
+    status.appendChild(session);
     var list = utils.el("ol", "chat-msgs");
     var form = utils.el("form", "chat-form");
     var nickInput = utils.el("input", "chat-nick");
@@ -53,7 +56,6 @@
     form.appendChild(textInput);
     form.appendChild(sendBtn);
     root.appendChild(status);
-    root.appendChild(session);
     root.appendChild(list);
     root.appendChild(form);
     app.appendChild(root);
@@ -131,7 +133,7 @@
     }
 
     function setStatus(text, cls) {
-      status.textContent = text;
+      statusText.textContent = text;
       root.classList.toggle(ONLINE_CLASS, cls === "online");
       root.classList.toggle(OFFLINE_CLASS, cls === "offline");
     }
@@ -149,26 +151,49 @@
       global.setTimeout(connect, 200);
     }
 
+    function openMyProfile() {
+      var p = X.auth.getProfile();
+      if (p) {
+        if (X.posts && X.posts.showProfile) {
+          X.posts.showProfile({ sub: p.sub, name: p.name, picture: p.picture });
+        }
+        return;
+      }
+      if (X.posts && X.posts.showProfile) {
+        X.posts.showProfile({ visitor: X.identity.visitorId(), name: X.identity.guestName() });
+      }
+    }
+
     function renderSession() {
       session.innerHTML = "";
       var p = X.auth.getProfile();
       if (p) {
+        var id = utils.el("button", "chat-session-id");
+        id.type = "button";
+        id.title = "Ver mi perfil";
+        id.setAttribute("aria-label", "Ver mi perfil");
         if (p.picture) {
           var img = utils.el("img", "chat-avatar");
           img.src = p.picture;
           img.alt = p.name || "";
           img.width = 24;
           img.height = 24;
-          session.appendChild(img);
+          id.appendChild(img);
         }
         var who = utils.el("span", "chat-who", p.name || "verificado");
-        session.appendChild(who);
-        var logout = utils.el("button", "chat-logout", "Salir");
+        id.appendChild(who);
+        id.addEventListener("click", openMyProfile);
+        session.appendChild(id);
+        var logout = utils.el("button", "chat-logout");
         logout.type = "button";
+        logout.title = "Cerrar sesión";
+        logout.setAttribute("aria-label", "Cerrar sesión");
+        logout.innerHTML = '<i data-lucide="log-out"></i>';
         logout.addEventListener("click", function () {
           X.auth.logout();
         });
         session.appendChild(logout);
+        if (X.core && X.core.initIcons) X.core.initIcons();
         nickInput.hidden = true;
         return;
       }
@@ -199,8 +224,21 @@
         img.height = 28;
         li.appendChild(img);
       }
-      var meta = utils.el("span", "chat-msg-meta", (author && author.name) || message.nickname);
-      if (author && author.sub) meta.classList.add("chat-msg-verified");
+      var nameText = (author && author.name) || message.nickname;
+      var meta;
+      if (author && author.sub) {
+        meta = utils.el("button", "chat-msg-meta chat-msg-user chat-msg-verified", nameText);
+        meta.type = "button";
+        meta.title = "Ver perfil";
+        meta.setAttribute("aria-label", "Ver perfil de " + nameText);
+        meta.addEventListener("click", function () {
+          if (X.posts && X.posts.showProfile) {
+            X.posts.showProfile({ sub: author.sub, name: author.name, picture: author.picture });
+          }
+        });
+      } else {
+        meta = utils.el("span", "chat-msg-meta", nameText);
+      }
       var body = utils.el("span", "chat-msg-body");
       try {
         body.innerHTML = X.markdown.render(message.body, { sanitize: true });

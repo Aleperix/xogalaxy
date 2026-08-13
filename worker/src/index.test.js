@@ -48,7 +48,7 @@ describe("Worker routes", () => {
       headers: { Origin: "https://xogalax.blogspot.com" },
     });
     expect(res.status).toBe(204);
-    expect(res.headers.get("Access-Control-Allow-Methods")).toBe("GET, POST, OPTIONS");
+    expect(res.headers.get("Access-Control-Allow-Methods")).toBe("GET, POST, PUT, OPTIONS");
     expect(res.headers.get("Access-Control-Allow-Headers")).toBe("*");
   });
 

@@ -52,7 +52,7 @@
       b.title = (f.name || "Seguidor") + " · ver aportes";
       b.setAttribute("data-sub", f.sub || "");
       b.addEventListener("click", function () {
-        if (X.posts && X.posts.showAuthor) X.posts.showAuthor(f.sub, f.name);
+        if (X.posts && X.posts.showProfile) X.posts.showProfile({ sub: f.sub, name: f.name, picture: f.picture });
       });
       if (f.picture) {
         var img = document.createElement("img");

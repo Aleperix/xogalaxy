@@ -5,6 +5,7 @@ import { urlsFromSitemap, saveToWayback } from "./wayback.js";
 import { Auth, isOwner } from "./auth.js";
 import * as comments from "./comments.js";
 import * as posts from "./posts.js";
+import * as profiles from "./profiles.js";
 import * as engagement from "./engagement.js";
 import { fetchRelease } from "./releases.js";
 
@@ -28,6 +29,7 @@ const RELEASES_CACHE = "public, max-age=3600";
 const RATING_RATE_LIMIT = 30;
 const REACTION_RATE_LIMIT = 30;
 const FOLLOW_RATE_LIMIT = 30;
+const PROFILE_RATE_LIMIT = 30;
 const ENGAGEMENT_TARGETS_MAX = 50;
 
 async function ensureComments(db) {
@@ -48,6 +50,11 @@ async function ensureEngagement(db) {
 async function ensureFollowers(db) {
   const row = await db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='followers'`).first();
   if (!row) await followers.migrate(db);
+}
+
+async function ensureProfiles(db) {
+  const row = await db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='profiles'`).first();
+  if (!row) await profiles.migrate(db);
 }
 
 export default {
@@ -81,6 +88,8 @@ export default {
           return handleFollowersUnfollow(request, env, origin);
         case "/followers/me":
           return handleFollowersMe(request, env, origin);
+        case "/profiles":
+          return handleProfiles(request, env, origin);
         case "/visits":
           return handleVisits(request, env, origin);
         case "/auth/verify":
@@ -811,6 +820,70 @@ async function handleVisits(request, env, origin) {
   return json({ key: VISITS_KEY, value, hit }, 200, cors(origin));
 }
 
+// ---- perfiles ----
+
+async function handleProfiles(request, env, origin) {
+  await ensureProfiles(env.DB);
+  if (request.method === "GET") {
+    const url = new URL(request.url);
+    const sub = String(url.searchParams.get("sub") || "").trim().replace(/[^A-Za-z0-9_-]/g, "");
+    const visitor = String(url.searchParams.get("visitor") || "").trim().replace(/[^A-Za-z0-9_-]/g, "");
+    if (!sub && !visitor) {
+      return json({ error: "sub or visitor required" }, 400, cors(origin));
+    }
+    const row = await profiles.getProfile(env.DB, { sub: sub || null, visitor: visitor || null });
+    if (!row) {
+      return json({ profile: null }, 200, cors(origin));
+    }
+    const token = request.headers.get("X-XOGALAXY-Token") || url.searchParams.get("token") || "";
+    const me = token ? await verifyProfile(env, token) : null;
+    return json(
+      {
+        profile: Object.assign({}, row, {
+          isOwner: isOwner(env, row.sub),
+          isSelf: !!(me && row.sub && me.sub === row.sub),
+        }),
+      },
+      200,
+      cors(origin)
+    );
+  }
+
+  if (request.method === "PUT") {
+    if (await rateLimited(env, request, "profile", PROFILE_RATE_LIMIT)) {
+      return json({ error: "rate limited" }, 429, cors(origin));
+    }
+    let body;
+    try {
+      body = await request.json();
+    } catch (err) {
+      return json({ error: "invalid json" }, 400, cors(origin));
+    }
+    const name = String(body.name || "").trim().slice(0, 40);
+    const bio = String(body.bio || "").trim().slice(0, 300);
+    const picture = String(body.picture || "").trim().slice(0, 500) || null;
+    if (picture && !/^https?:\/\//i.test(picture)) {
+      return json({ error: "invalid picture" }, 400, cors(origin));
+    }
+    let sub = null;
+    let visitor = null;
+    if (body.token) {
+      const profile = await verifyProfile(env, String(body.token || ""));
+      if (!profile) return json({ error: "unauthorized" }, 401, cors(origin));
+      sub = profile.sub;
+    } else {
+      visitor = String(body.visitor || "").trim().slice(0, 64);
+      if (!visitor) return json({ error: "visitor required" }, 400, cors(origin));
+    }
+    const row = await profiles.upsertProfile(env.DB, { sub, visitor, name, bio, picture });
+    await ensurePosts(env.DB);
+    await posts.updateAuthor(env.DB, { sub, visitor, name: row.name, picture: row.picture });
+    return json({ profile: row }, 200, cors(origin));
+  }
+
+  return json({ error: "method not allowed" }, 405, cors(origin));
+}
+
 // ---- helpers ----
 
 function authorizedMod(request, env) {
@@ -851,10 +924,12 @@ async function buildBackup(env) {
   await ensurePosts(env.DB);
   await ensureEngagement(env.DB);
   await ensureFollowers(env.DB);
+  await ensureProfiles(env.DB);
   const commentsExport = await comments.exportAll(env.DB);
   const postsExport = await posts.exportAll(env.DB);
   const engagementExport = await engagement.exportAll(env.DB);
   const followersExport = await followers.exportAll(env.DB);
+  const profilesExport = await profiles.exportAll(env.DB);
   const chat = {};
   for (const room of CHAT_ROOMS) {
     const stub = env.ROOM.getByName(room);
@@ -862,11 +937,12 @@ async function buildBackup(env) {
   }
   return {
     exportedAt: new Date().toISOString(),
-    schema: 4,
+    schema: 5,
     comments: commentsExport,
     posts: postsExport,
     engagement: engagementExport,
     followers: followersExport,
+    profiles: profilesExport,
     chat,
   };
 }
@@ -916,7 +992,7 @@ function handlePreflight(origin, allowed) {
     status: 204,
     headers: {
       "Access-Control-Allow-Origin": origin,
-      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS",
       "Access-Control-Allow-Headers": "*",
       "Access-Control-Max-Age": "86400",
       "Cache-Control": "no-store",

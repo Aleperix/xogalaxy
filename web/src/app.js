@@ -22,6 +22,7 @@
     X.comments.init();
     X.posts.init();
     X.engagement.init();
+    X.onboarding.init();
   }
 
   if (document.readyState === "loading") {

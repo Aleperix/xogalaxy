@@ -221,7 +221,7 @@ describe("chunk posts (tool de aportes)", () => {
     expect(titles).toEqual(["Aprobado"]);
   });
 
-  it("showAuthor abre un modal con los aportes del autor", async () => {
+  it("showProfile abre un modal con el perfil y los aportes del autor", async () => {
     loadVendored();
     mockBackend({
       "/posts/by-author": () =>
@@ -237,16 +237,94 @@ describe("chunk posts (tool de aportes)", () => {
         ),
     });
     window.XOGalaxy.posts.init();
-    window.XOGalaxy.posts.showAuthor("sub-ana", "Ana");
+    window.XOGalaxy.posts.showProfile({ sub: "sub-ana", name: "Ana" });
     await flush();
 
     const modal = document.querySelector(".pt-modal");
     expect(modal).toBeTruthy();
-    expect(modal.querySelector(".pt-modal-title").textContent).toContain("Ana");
+    expect(modal.querySelector(".pt-profile-name").textContent).toContain("Ana");
+    expect(modal.querySelector(".pt-profile-badge").textContent).toBe("verificado");
     expect(modal.querySelector(".pt-post-title").textContent).toBe("De Ana");
     expect(modal.querySelector(".pt-post-body").innerHTML).toContain("<strong>hola</strong>");
 
     modal.querySelector(".pt-modal-close").click();
     expect(document.querySelector(".pt-modal")).toBeNull();
+  });
+
+  it("showProfile de uno mismo permite editar nombre, bio y foto", async () => {
+    loadVendored();
+    let saved = null;
+    mockBackend({
+      "/profiles": (u, opts, method) => {
+        if (method === "GET") {
+          return Promise.resolve(
+            new Response(JSON.stringify({ profile: null }), { status: 200 })
+          );
+        }
+        if (method === "PUT") {
+          saved = JSON.parse(opts.body);
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                profile: { name: saved.name, bio: saved.bio, picture: saved.picture },
+              }),
+              { status: 200 }
+            )
+          );
+        }
+        return Promise.resolve(new Response(JSON.stringify({ error: "not found" }), { status: 404 }));
+      },
+      "/posts/my": () =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({
+              posts: [
+                { id: 1, title: "Mi aporte", body: "x", author: { name: "Yo" }, createdAt: 1700000000000, status: "pending" },
+              ],
+            }),
+            { status: 200 }
+          )
+        ),
+    });
+    const visitor = window.XOGalaxy.identity.visitorId();
+    window.XOGalaxy.posts.init();
+    window.XOGalaxy.posts.showProfile({ visitor: visitor, name: "Visitante" });
+    await flush();
+
+    const modal = document.querySelector(".pt-modal");
+    expect(modal).toBeTruthy();
+    expect(modal.querySelector(".pt-profile-edit")).toBeTruthy();
+    expect(modal.querySelector(".pt-profile-sub").textContent).toBe("Mis aportes");
+    expect(modal.querySelector(".pt-post-title").textContent).toBe("Mi aporte");
+
+    modal.querySelector(".pt-profile-edit").click();
+    const nameInput = modal.querySelector(".pt-profile-form input.pt-name");
+    nameInput.value = "Nuevo Nombre";
+    const form = modal.querySelector(".pt-profile-form");
+    form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    await flush();
+
+    expect(saved).toEqual({
+      name: "Nuevo Nombre",
+      bio: "",
+      picture: "",
+      visitor: visitor,
+    });
+    expect(window.XOGalaxy.identity.guestName()).toBe("Nuevo Nombre");
+  });
+
+  it("showProfile de un visitante anónimo sin perfil avisa que no hay perfil público", async () => {
+    mockBackend({
+      "/profiles": () =>
+        Promise.resolve(new Response(JSON.stringify({ profile: null }), { status: 200 })),
+    });
+    window.XOGalaxy.posts.init();
+    window.XOGalaxy.posts.showProfile({ visitor: "v_otro", name: "Otro" });
+    await flush();
+
+    const modal = document.querySelector(".pt-modal");
+    expect(modal).toBeTruthy();
+    expect(modal.querySelector(".pt-profile-name").textContent).toContain("Otro");
+    expect(modal.querySelector(".pt-none").textContent).toBe("Este visitante no tiene perfil público.");
   });
 });

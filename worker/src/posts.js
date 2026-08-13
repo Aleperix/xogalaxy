@@ -125,6 +125,20 @@ export async function authorPosts(db, sub, includePending) {
   return rows.results.map(rowToPost);
 }
 
+export async function updateAuthor(db, { sub = null, visitor = null, name, picture }) {
+  if (sub) {
+    await db
+      .prepare(`UPDATE posts SET author_name = ?, author_pic = ? WHERE author_sub = ?`)
+      .bind(name, picture || null, sub)
+      .run();
+  } else if (visitor) {
+    await db
+      .prepare(`UPDATE posts SET author_name = ?, author_pic = ? WHERE author_visitor = ?`)
+      .bind(name, picture || null, visitor)
+      .run();
+  }
+}
+
 export async function reviewPost(db, id, action) {
   if (![POST_STATUS.APPROVED, POST_STATUS.REJECTED].includes(action)) {
     throw new Error("invalid action");

@@ -492,12 +492,81 @@
     });
   }
 
-  // ---- aportes de un autor (desde su avatar en el sidebar) ----
-  function showAuthor(sub, name) {
+  // ---- perfil + aportes (dialog) ----
+  function currentMe() {
+    var p = X.auth.getProfile();
+    if (p) return { sub: p.sub, visitor: null, name: p.name, picture: p.picture };
+    return { sub: null, visitor: X.identity.visitorId(), name: X.identity.guestName(), picture: null };
+  }
+
+  function profileIcon(target) {
+    var i = utils.el("span", "pt-avatar-lg");
+    if (target.picture) {
+      var img = utils.el("img", "pt-avatar-lg-img");
+      img.src = target.picture;
+      img.alt = target.name || "";
+      img.loading = "lazy";
+      i.appendChild(img);
+    } else {
+      i.textContent = (target.name || "?").charAt(0).toUpperCase();
+    }
+    return i;
+  }
+
+  function buildFollowButton() {
+    var btn = utils.el("button", "pt-profile-follow");
+    btn.type = "button";
+    var state = false;
+    var token = X.auth && X.auth.getToken ? X.auth.getToken() : null;
+    function paint(following) {
+      state = following;
+      btn.classList.toggle("following", following);
+      btn.innerHTML = following
+        ? '<i data-lucide="user-check"/>Siguiendo'
+        : '<i data-lucide="user-plus"/>Seguir';
+      if (X.core && X.core.initIcons) X.core.initIcons();
+    }
+    btn.addEventListener("click", function () {
+      if (!token) {
+        if (X.auth && X.auth.login) X.auth.login();
+        return;
+      }
+      btn.disabled = true;
+      var req = state ? X.api.followersUnfollow(token) : X.api.followersFollow(token);
+      req
+        .then(function (d) {
+          paint(!!d.following);
+        })
+        .catch(function () {})
+        .then(function () {
+          btn.disabled = false;
+        });
+    });
+    if (token) {
+      X.api.followersMe(token)
+        .then(function (d) {
+          paint(!!d.following);
+        })
+        .catch(function () {
+          paint(false);
+        });
+    } else {
+      paint(false);
+    }
+    return btn;
+  }
+
+  function showProfile(target) {
+    target = target || {};
+    var me = currentMe();
+    var self =
+      (target.sub && me.sub && target.sub === me.sub) ||
+      (target.visitor && me.visitor && target.visitor === me.visitor);
+
     var backdrop = utils.el("div", "pt-modal-backdrop");
-    var modal = utils.el("div", "pt-modal");
+    var modal = utils.el("div", "pt-modal pt-profile-modal");
     var head = utils.el("div", "pt-modal-head");
-    var title = utils.el("h3", "pt-modal-title", "Aportes de " + (name || "esta persona"));
+    var title = utils.el("h3", "pt-modal-title", "Perfil");
     var close = utils.el("button", "pt-modal-close", "×");
     close.type = "button";
     close.setAttribute("aria-label", "Cerrar");
@@ -524,23 +593,189 @@
     document.addEventListener("keydown", onKey);
 
     var token = X.auth && X.auth.getToken ? X.auth.getToken() : null;
-    X.api.posts
-      .byAuthor(sub, token)
-      .then(function (d) {
-        var items = d.posts || [];
-        body.innerHTML = "";
-        if (!items.length) {
-          body.appendChild(utils.el("p", "pt-none", "Todavía no hay aportes publicados de esta persona."));
-          return;
-        }
-        items.forEach(function (post) {
-          body.appendChild(postCard(post));
+    var visitor = me.visitor;
+    var profile = null;
+
+    function renderHeader() {
+      var headEl = utils.el("div", "pt-profile-head");
+      var nameRow = utils.el("div", "pt-profile-id");
+      var n = utils.el("span", "pt-profile-name", profile.name || target.name || "Anónimo");
+      nameRow.appendChild(n);
+      if (target.sub) {
+        var badge = utils.el("span", "pt-profile-badge", "verificado");
+        nameRow.appendChild(badge);
+      }
+      if (profile.isOwner) {
+        var ownerBadge = utils.el("span", "pt-profile-badge pt-profile-badge-owner", "owner");
+        nameRow.appendChild(ownerBadge);
+      }
+      headEl.appendChild(profileIcon({ name: profile.name || target.name, picture: profile.picture || target.picture }));
+      headEl.appendChild(nameRow);
+      if (profile.bio) {
+        var bio = utils.el("p", "pt-profile-bio", profile.bio);
+        headEl.appendChild(bio);
+      }
+      return headEl;
+    }
+
+    function renderPosts(list, emptyText) {
+      var wrap = utils.el("div", "pt-profile-posts");
+      if (!list.length) {
+        wrap.appendChild(utils.el("p", "pt-none", emptyText));
+        return wrap;
+      }
+      list.forEach(function (post) {
+        wrap.appendChild(postCard(post));
+      });
+      return wrap;
+    }
+
+    function renderSelf() {
+      body.innerHTML = "";
+      body.appendChild(renderHeader());
+
+      var editBtn = utils.el("button", "pt-profile-edit", "Editar perfil");
+      editBtn.type = "button";
+      body.appendChild(editBtn);
+
+      var form = utils.el("form", "pt-profile-form");
+      form.hidden = true;
+      var nameInput = utils.el("input", "pt-name pt-profile-field");
+      nameInput.maxLength = 40;
+      nameInput.value = profile.name || "";
+      var bioInput = utils.el("textarea", "pt-profile-bio-input pt-profile-field");
+      bioInput.maxLength = 300;
+      bioInput.placeholder = "Un poco sobre vos… (opcional)";
+      bioInput.value = profile.bio || "";
+      var picInput = utils.el("input", "pt-name pt-profile-field");
+      picInput.maxLength = 500;
+      picInput.placeholder = "URL de tu foto (opcional)";
+      picInput.value = profile.picture || "";
+      var formStatus = utils.el("p", "pt-status");
+      formStatus.hidden = true;
+      var formBar = utils.el("div", "pt-profile-formbar");
+      var save = utils.el("button", "pt-submit", "Guardar");
+      save.type = "submit";
+      var cancel = utils.el("button", "pt-cancel", "Cancelar");
+      cancel.type = "button";
+      formBar.appendChild(save);
+      formBar.appendChild(cancel);
+      form.appendChild(nameInput);
+      form.appendChild(bioInput);
+      form.appendChild(picInput);
+      form.appendChild(formStatus);
+      form.appendChild(formBar);
+      body.appendChild(form);
+
+      editBtn.addEventListener("click", function () {
+        form.hidden = false;
+        editBtn.hidden = true;
+        nameInput.focus();
+      });
+      cancel.addEventListener("click", function () {
+        form.hidden = true;
+        editBtn.hidden = false;
+      });
+      form.addEventListener("submit", function (e) {
+        e.preventDefault();
+        save.disabled = true;
+        formStatus.hidden = false;
+        formStatus.textContent = "Guardando…";
+        formStatus.className = "pt-status";
+        var payload = {
+          name: nameInput.value.trim(),
+          bio: bioInput.value.trim(),
+          picture: picInput.value.trim(),
+        };
+        if (token) payload.token = token;
+        else payload.visitor = visitor;
+        X.api.profiles
+          .save(payload)
+          .then(function () {
+            if (!token && X.identity && X.identity.setGuestName) {
+              X.identity.setGuestName(payload.name);
+            }
+            closeModal();
+            showProfile({ sub: target.sub, visitor: target.visitor, name: payload.name, picture: payload.picture });
+          })
+          .catch(function () {
+            formStatus.textContent = "No se pudo guardar. Intentá de nuevo.";
+            formStatus.className = "pt-status error";
+            save.disabled = false;
+          });
+      });
+
+      var sub = utils.el("h4", "pt-profile-sub", "Mis aportes");
+      body.appendChild(sub);
+      var myWrap = utils.el("div", "pt-profile-posts");
+      myWrap.appendChild(utils.el("p", "pt-none", "Cargando…"));
+      body.appendChild(myWrap);
+      X.api.posts
+        .my(token, token ? null : visitor)
+        .then(function (d) {
+          myWrap.innerHTML = "";
+          myWrap.appendChild(renderPosts(d.posts || [], "Todavía no hiciste aportes."));
+        })
+        .catch(function () {
+          myWrap.innerHTML = "";
+          myWrap.appendChild(utils.el("p", "pt-none", "No se pudieron cargar tus aportes."));
         });
+    }
+
+    function renderOther() {
+      body.innerHTML = "";
+      body.appendChild(renderHeader());
+      var token = X.auth && X.auth.getToken ? X.auth.getToken() : null;
+      if (token) {
+        body.appendChild(buildFollowButton());
+      }
+      var sub = utils.el("h4", "pt-profile-sub", "Aportes publicados");
+      body.appendChild(sub);
+      var listWrap = utils.el("div", "pt-profile-posts");
+      listWrap.appendChild(utils.el("p", "pt-none", "Cargando…"));
+      body.appendChild(listWrap);
+      X.api.posts
+        .byAuthor(target.sub, token)
+        .then(function (d) {
+          listWrap.innerHTML = "";
+          listWrap.appendChild(renderPosts(d.posts || [], "Todavía no hay aportes publicados de esta persona."));
+        })
+        .catch(function () {
+          listWrap.innerHTML = "";
+          listWrap.appendChild(utils.el("p", "pt-none", "No se pudieron cargar los aportes."));
+        });
+    }
+
+    function renderAnonOther() {
+      body.innerHTML = "";
+      body.appendChild(renderHeader());
+      body.appendChild(utils.el("p", "pt-none", "Este visitante no tiene perfil público."));
+    }
+
+    var q = target.sub ? { sub: target.sub } : { visitor: target.visitor };
+    X.api.profiles
+      .get(q)
+      .then(function (d) {
+        if (d.profile) {
+          profile = d.profile;
+          self = typeof d.profile.isSelf === "boolean" ? d.profile.isSelf : self;
+        } else {
+          profile = { name: target.name || "Anónimo", bio: "", picture: target.picture || null, isOwner: false };
+        }
+        if (self) renderSelf();
+        else if (target.sub) renderOther();
+        else renderAnonOther();
       })
       .catch(function () {
-        body.innerHTML = "";
-        body.appendChild(utils.el("p", "pt-none", "No se pudieron cargar los aportes."));
+        profile = { name: target.name || "Anónimo", bio: "", picture: target.picture || null, isOwner: false };
+        if (self) renderSelf();
+        else if (target.sub) renderOther();
+        else renderAnonOther();
       });
+  }
+
+  function showAuthor(sub, name) {
+    showProfile({ sub: sub, name: name });
   }
 
   function reset() {
@@ -551,5 +786,5 @@
   }
 
   X.hooks.add("swap", init);
-  X.posts = { init: init, reset: reset, showAuthor: showAuthor };
+  X.posts = { init: init, reset: reset, showProfile: showProfile, showAuthor: showAuthor };
 })(window);
