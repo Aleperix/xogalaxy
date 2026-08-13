@@ -22,6 +22,8 @@
   var initialized = false;
   var loading = false;
   var pendingButtons = [];
+  var mountedButtons = [];
+  var autoPrompted = false;
   var listeners = [];
   var ensuring = null;
 
@@ -137,6 +139,11 @@
     return ensuring;
   }
 
+  function gisTheme() {
+    var root = document.documentElement;
+    return root && root.getAttribute("data-theme") === "light" ? "outline" : "filled_black";
+  }
+
   function initGoogle() {
     if (!global.google || !global.google.accounts || !CLIENT_ID) return;
     initialized = true;
@@ -145,10 +152,19 @@
       callback: handleCredential,
       auto_select: true,
       cancel_on_tap_outside: true,
+      theme: gisTheme(),
     });
     var btns = pendingButtons;
     pendingButtons = [];
     btns.forEach(function (el) {
+      renderGoogleButton(el);
+    });
+  }
+
+  function applyGisTheme() {
+    if (!initialized) return;
+    initGoogle();
+    mountedButtons.forEach(function (el) {
       renderGoogleButton(el);
     });
   }
@@ -182,9 +198,14 @@
 
   function renderGoogleButton(el) {
     if (!el) return;
+    if (!el.classList.contains("xogalaxy-google-slot")) {
+      el.classList.add("xogalaxy-google-slot");
+      mountedButtons.push(el);
+    }
     try {
+      el.innerHTML = "";
       global.google.accounts.id.renderButton(el, {
-        theme: "outline",
+        theme: gisTheme(),
         size: "medium",
         text: "continue_with",
         shape: "pill",
@@ -207,7 +228,7 @@
     ensureReady().then(function () {
       if (!initialized) return;
       try {
-        global.google.accounts.id.prompt(handleCredential);
+        global.google.accounts.id.prompt();
       } catch (err) {}
     });
   }
@@ -225,6 +246,12 @@
   function init() {
     restoreSession();
     ensureReady();
+    if (!autoPrompted) {
+      autoPrompted = true;
+      global.setTimeout(function () {
+        if (!profile) login();
+      }, 1500);
+    }
   }
 
   function onAuthChange(fn) {
@@ -234,6 +261,8 @@
       if (i >= 0) listeners.splice(i, 1);
     };
   }
+
+  X.hooks.add("theme", applyGisTheme);
 
   X.auth = {
     init: init,
@@ -259,6 +288,16 @@
       CLIENT_ID = id || "";
       ensuring = null;
       cacheId(CLIENT_ID);
+    },
+    _resetAutoPrompt: function () {
+      autoPrompted = false;
+    },
+    _resetForTests: function () {
+      initialized = false;
+      loading = false;
+      pendingButtons = [];
+      mountedButtons = [];
+      autoPrompted = false;
     },
   };
 })(window);

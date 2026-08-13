@@ -14,6 +14,8 @@
   var DEBOUNCE_MS = 150;
   var POST_BODY_MAX = 20000;
   var POST_TITLE_MAX = 200;
+  var STATUS = { PENDING: "pending", APPROVED: "approved", REJECTED: "rejected" };
+  var STATUS_LABEL = { pending: "pendiente", approved: "aprobado", rejected: "rechazado" };
   var live = [];
 
   function copyText(text, done) {
@@ -40,6 +42,38 @@
     global.setTimeout(function () {
       btn.textContent = prev;
     }, 1600);
+  }
+
+  function renderMarkdown(text, sanitize) {
+    if (X.markdown && X.markdown.render) {
+      try {
+        return X.markdown.render(text, { gfm: true, breaks: false, sanitize: !!sanitize });
+      } catch (err) {}
+    }
+    return utils.escHtml(text);
+  }
+
+  function postCard(p) {
+    var card = utils.el("div", "pt-post");
+    if (p.status === STATUS.PENDING) card.classList.add("pt-post-pending");
+    if (p.status === STATUS.REJECTED) card.classList.add("pt-post-rejected");
+    var h = utils.el("div", "pt-post-head");
+    var t = utils.el("h3", "pt-post-title", p.title);
+    var meta = utils.el("span", "pt-post-meta", (p.author && p.author.name) || "Anónimo");
+    var badge = utils.el("span", "pt-post-status " + p.status, STATUS_LABEL[p.status] || p.status);
+    h.appendChild(t);
+    h.appendChild(meta);
+    h.appendChild(badge);
+    card.appendChild(h);
+    var body = utils.el("div", "pt-post-body");
+    body.innerHTML = renderMarkdown(p.body, true);
+    card.appendChild(body);
+    var when = utils.el("time", "pt-post-when");
+    try {
+      when.textContent = new Date(p.createdAt).toLocaleString();
+    } catch (err) {}
+    card.appendChild(when);
+    return card;
   }
 
   function create(container) {
@@ -134,21 +168,22 @@
     modWrap.appendChild(modList);
     root.appendChild(modWrap);
 
+    // ---- mis aportes (historial + filtros) ----
+    var myWrap = utils.el("div", "pt-my");
+    var myToggle = utils.el("button", "pt-my-toggle", "Mis aportes");
+    myToggle.type = "button";
+    var myList = utils.el("div", "pt-my-list");
+    myList.hidden = true;
+    myWrap.appendChild(myToggle);
+    myWrap.appendChild(myList);
+    root.appendChild(myWrap);
+
     container.appendChild(root);
 
     function setStatus(text, cls) {
       status.textContent = text;
       status.hidden = !text;
       status.className = "pt-status" + (cls ? " " + cls : "");
-    }
-
-    function renderMarkdown(text, sanitize) {
-      if (X.markdown && X.markdown.render) {
-        try {
-          return X.markdown.render(text, { gfm: true, breaks: false, sanitize: !!sanitize });
-        } catch (err) {}
-      }
-      return utils.escHtml(text);
     }
 
     function renderPreview() {
@@ -204,7 +239,10 @@
       var p = X.auth.getProfile();
       var payload = { title: t, body: body };
       if (p) payload.token = X.auth.getToken();
-      else payload.name = nameInput.value.trim().slice(0, 40) || "";
+      else {
+        payload.name = nameInput.value.trim().slice(0, 40) || "";
+        if (X.identity && X.identity.visitorId) payload.visitor = X.identity.visitorId();
+      }
       submit.disabled = true;
       X.api.posts
         .create(payload)
@@ -251,25 +289,6 @@
     }
 
     // ---- bandeja ----
-    function postCard(p, pending) {
-      var card = utils.el("div", "pt-post" + (pending ? " pt-post-pending" : ""));
-      var h = utils.el("div", "pt-post-head");
-      var t = utils.el("h3", "pt-post-title", p.title);
-      var meta = utils.el("span", "pt-post-meta", (p.author && p.author.name) || "Anónimo");
-      h.appendChild(t);
-      h.appendChild(meta);
-      card.appendChild(h);
-      var body = utils.el("div", "pt-post-body");
-      body.innerHTML = renderMarkdown(p.body, true);
-      card.appendChild(body);
-      var when = utils.el("time", "pt-post-when");
-      try {
-        when.textContent = new Date(p.createdAt).toLocaleString();
-      } catch (err) {}
-      card.appendChild(when);
-      return card;
-    }
-
     function renderTray() {
       modList.innerHTML = "";
       var p = X.auth.getProfile();
@@ -296,7 +315,7 @@
             return;
           }
           items.forEach(function (post) {
-            var card = postCard(post, true);
+            var card = postCard(post);
             var actions = utils.el("div", "pt-actions");
             var approve = utils.el("button", "pt-approve", "Aprobar");
             approve.type = "button";
@@ -340,7 +359,7 @@
             return;
           }
           items.forEach(function (post) {
-            var card = postCard(post, false);
+            var card = postCard(post);
             var row = utils.el("div", "pt-publish");
             var copyMd = utils.el("button", "pt-copy", "Copiar Markdown");
             copyMd.type = "button";
@@ -389,6 +408,65 @@
       if (!modList.hidden) renderTray();
     });
 
+    // ---- mis aportes ----
+    var myFilter = "all";
+
+    function renderMyList() {
+      myList.innerHTML = "";
+      var filters = utils.el("div", "pt-filters");
+      [
+        { key: "all", label: "Todos" },
+        { key: STATUS.PENDING, label: "Pendientes" },
+        { key: STATUS.APPROVED, label: "Aprobados" },
+        { key: STATUS.REJECTED, label: "Rechazados" },
+      ].forEach(function (s) {
+        var b = utils.el("button", "pt-filter" + (myFilter === s.key ? " active" : ""), s.label);
+        b.type = "button";
+        b.addEventListener("click", function () {
+          myFilter = s.key;
+          renderMyList();
+        });
+        filters.appendChild(b);
+      });
+      myList.appendChild(filters);
+      var list = utils.el("div", "pt-my-items");
+      myList.appendChild(list);
+
+      var p = X.auth.getProfile();
+      var token = p ? X.auth.getToken() : null;
+      var visitor = X.identity && X.identity.visitorId ? X.identity.visitorId() : "";
+      X.api.posts
+        .my(token, visitor)
+        .then(function (d) {
+          var items = (d.posts || []).filter(function (post) {
+            return myFilter === "all" || post.status === myFilter;
+          });
+          list.innerHTML = "";
+          if (!items.length) {
+            list.appendChild(
+              utils.el(
+                "p",
+                "pt-none",
+                myFilter === "all" ? "Todavía no hiciste aportes." : "No hay aportes en este estado."
+              )
+            );
+            return;
+          }
+          items.forEach(function (post) {
+            list.appendChild(postCard(post));
+          });
+        })
+        .catch(function () {
+          list.innerHTML = "";
+          list.appendChild(utils.el("p", "pt-none", "No se pudieron cargar tus aportes."));
+        });
+    }
+
+    myToggle.addEventListener("click", function () {
+      myList.hidden = !myList.hidden;
+      if (!myList.hidden) renderMyList();
+    });
+
     var unbindAuth = X.auth.onAuthChange(function () {
       renderAuth();
       if (!modList.hidden) renderTray();
@@ -414,6 +492,57 @@
     });
   }
 
+  // ---- aportes de un autor (desde su avatar en el sidebar) ----
+  function showAuthor(sub, name) {
+    var backdrop = utils.el("div", "pt-modal-backdrop");
+    var modal = utils.el("div", "pt-modal");
+    var head = utils.el("div", "pt-modal-head");
+    var title = utils.el("h3", "pt-modal-title", "Aportes de " + (name || "esta persona"));
+    var close = utils.el("button", "pt-modal-close", "×");
+    close.type = "button";
+    close.setAttribute("aria-label", "Cerrar");
+    head.appendChild(title);
+    head.appendChild(close);
+    var body = utils.el("div", "pt-modal-body");
+    body.appendChild(utils.el("p", "pt-none", "Cargando…"));
+    modal.appendChild(head);
+    modal.appendChild(body);
+    backdrop.appendChild(modal);
+    document.body.appendChild(backdrop);
+
+    function closeModal() {
+      backdrop.remove();
+      document.removeEventListener("keydown", onKey);
+    }
+    function onKey(e) {
+      if (e.key === "Escape") closeModal();
+    }
+    close.addEventListener("click", closeModal);
+    backdrop.addEventListener("click", function (e) {
+      if (e.target === backdrop) closeModal();
+    });
+    document.addEventListener("keydown", onKey);
+
+    var token = X.auth && X.auth.getToken ? X.auth.getToken() : null;
+    X.api.posts
+      .byAuthor(sub, token)
+      .then(function (d) {
+        var items = d.posts || [];
+        body.innerHTML = "";
+        if (!items.length) {
+          body.appendChild(utils.el("p", "pt-none", "Todavía no hay aportes publicados de esta persona."));
+          return;
+        }
+        items.forEach(function (post) {
+          body.appendChild(postCard(post));
+        });
+      })
+      .catch(function () {
+        body.innerHTML = "";
+        body.appendChild(utils.el("p", "pt-none", "No se pudieron cargar los aportes."));
+      });
+  }
+
   function reset() {
     live.forEach(function (inst) {
       inst.destroy();
@@ -422,5 +551,5 @@
   }
 
   X.hooks.add("swap", init);
-  X.posts = { init: init, reset: reset };
+  X.posts = { init: init, reset: reset, showAuthor: showAuthor };
 })(window);

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import "../core.js";
 import "../api.js";
 import "./auth.js";
+import "./identity.js";
 import "./engagement.js";
 
 function flush() {

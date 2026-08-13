@@ -14,7 +14,10 @@ describe("chunk auth", () => {
     vi.unstubAllGlobals();
     window.XOGalaxy.auth.logout();
     window.XOGalaxy.auth._setClientId("");
+    window.XOGalaxy.auth._resetForTests();
     window.google = undefined;
+    sessionStorage.clear();
+    document.documentElement.setAttribute("data-theme", "dark");
   });
 
   it("sin client id, init no carga el script GSI", async () => {
@@ -222,5 +225,82 @@ describe("chunk auth", () => {
     window.XOGalaxy.auth.logout();
     expect(sessionStorage.getItem("xogalaxy_token")).toBeNull();
     expect(sessionStorage.getItem("xogalaxy_profile")).toBeNull();
+  });
+
+  it("login llama a prompt de GIS (One Tap)", async () => {
+    const prompt = vi.fn();
+    window.google = {
+      accounts: { id: { initialize() {}, renderButton() {}, prompt } },
+    };
+    window.XOGalaxy.auth._setClientId("cid");
+    const appended = [];
+    vi.spyOn(document.head, "appendChild").mockImplementation((node) => {
+      appended.push(node);
+      return node;
+    });
+    window.XOGalaxy.auth.renderButton(document.createElement("div"));
+    appended[0].onload();
+    window.XOGalaxy.auth.login();
+    await flush();
+    expect(prompt).toHaveBeenCalled();
+  });
+
+  it("init dispara el One Tap automático si no hay sesión", async () => {
+    vi.useFakeTimers();
+    const prompt = vi.fn();
+    window.google = {
+      accounts: { id: { initialize() {}, renderButton() {}, prompt } },
+    };
+    window.XOGalaxy.auth._resetAutoPrompt();
+    window.XOGalaxy.auth._setClientId("cid");
+    const appended = [];
+    vi.spyOn(document.head, "appendChild").mockImplementation((node) => {
+      appended.push(node);
+      return node;
+    });
+    window.XOGalaxy.auth.renderButton(document.createElement("div"));
+    appended[0].onload();
+    window.XOGalaxy.auth.init();
+    vi.advanceTimersByTime(1600);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(prompt).toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
+  it("renderButton usa el tema de la página y se actualiza al cambiar de tema", () => {
+    const renders = [];
+    window.google = {
+      accounts: {
+        id: {
+          initialize() {},
+          renderButton(el, opts) {
+            renders.push(opts);
+          },
+          prompt() {},
+        },
+      },
+    };
+    window.XOGalaxy.auth._setClientId("cid");
+    const appended = [];
+    vi.spyOn(document.head, "appendChild").mockImplementation((node) => {
+      appended.push(node);
+      return node;
+    });
+    const slot = document.createElement("div");
+    document.body.appendChild(slot);
+
+    document.documentElement.setAttribute("data-theme", "dark");
+    window.XOGalaxy.auth.renderButton(slot);
+    appended[0].onload();
+    expect(renders[0].theme).toBe("filled_black");
+
+    document.documentElement.setAttribute("data-theme", "light");
+    window.XOGalaxy.hooks.run("theme", "light");
+    expect(renders[renders.length - 1].theme).toBe("outline");
+
+    document.documentElement.setAttribute("data-theme", "dark");
+    window.XOGalaxy.hooks.run("theme", "dark");
+    expect(renders[renders.length - 1].theme).toBe("filled_black");
   });
 });

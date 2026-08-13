@@ -29,6 +29,10 @@ export async function migrate(db) {
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_posts_status ON posts(status)`),
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_posts_created ON posts(created_at)`),
   ]);
+  const cols = await db.prepare(`PRAGMA table_info(posts)`).all();
+  if (!cols.results.some((c) => c.name === "author_visitor")) {
+    await db.prepare(`ALTER TABLE posts ADD COLUMN author_visitor TEXT`).run();
+  }
 }
 
 function rowToPost(r) {
@@ -38,6 +42,7 @@ function rowToPost(r) {
     body: r.body,
     author: {
       sub: r.author_sub || null,
+      visitor: r.author_visitor || null,
       name: r.author_name,
       picture: r.author_pic || null,
     },
@@ -52,13 +57,14 @@ function rowToPost(r) {
 export async function createPost(db, { title, body, author }) {
   const res = await db
     .prepare(
-      `INSERT INTO posts (title, body, author_sub, author_name, author_pic, status, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *`
+      `INSERT INTO posts (title, body, author_sub, author_visitor, author_name, author_pic, status, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`
     )
     .bind(
       title,
       body,
       author.sub || null,
+      author.visitor || null,
       author.name || "Anónimo",
       author.picture || null,
       POST_STATUS.PENDING,
@@ -88,6 +94,33 @@ export async function approvedPosts(db) {
        ORDER BY approved_at DESC, id DESC`
     )
     .bind(POST_STATUS.APPROVED)
+    .all();
+  return rows.results.map(rowToPost);
+}
+
+export async function myPosts(db, { sub = null, visitor = null }) {
+  const rows = await db
+    .prepare(
+      `SELECT * FROM posts
+       WHERE deleted = 0 AND (
+         (author_sub IS NOT NULL AND author_sub = ?1)
+         OR (author_sub IS NULL AND author_visitor = ?2)
+       )
+       ORDER BY created_at DESC`
+    )
+    .bind(sub, visitor)
+    .all();
+  return rows.results.map(rowToPost);
+}
+
+export async function authorPosts(db, sub, includePending) {
+  const rows = await db
+    .prepare(
+      `SELECT * FROM posts
+       WHERE deleted = 0 AND author_sub = ?1 AND (?2 = 1 OR status = ?3)
+       ORDER BY approved_at DESC, created_at DESC`
+    )
+    .bind(sub, includePending ? 1 : 0, POST_STATUS.APPROVED)
     .all();
   return rows.results.map(rowToPost);
 }
@@ -136,14 +169,15 @@ export async function importPosts(db, rows) {
     if (!p || !p.title || !p.body) continue;
     await db
       .prepare(
-        `INSERT INTO posts (id, title, body, author_sub, author_name, author_pic, status, post_url, created_at, updated_at, approved_at, deleted)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING`
+        `INSERT INTO posts (id, title, body, author_sub, author_visitor, author_name, author_pic, status, post_url, created_at, updated_at, approved_at, deleted)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING`
       )
       .bind(
         p.id,
         String(p.title),
         String(p.body),
         (p.author && p.author.sub) || null,
+        (p.author && p.author.visitor) || null,
         (p.author && p.author.name) || "Anónimo",
         (p.author && p.author.picture) || null,
         p.status || POST_STATUS.PENDING,

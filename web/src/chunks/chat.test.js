@@ -6,6 +6,7 @@ import "../core.js";
 import "../api.js";
 import "../markdown.js";
 import "./auth.js";
+import "./identity.js";
 import "./engagement.js";
 import "./chat.js";
 

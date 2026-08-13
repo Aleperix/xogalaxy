@@ -14,27 +14,15 @@
   var utils = X.core.utils;
   var api = X.api;
 
-  var VISITOR_KEY = "xogalaxy.visitor";
   var DEFAULT_REACTIONS = ["❤", "👍", "🔥"];
   var READY_ATTR = "data-engagement-ready";
 
   function visitorId() {
-    var v = null;
-    try {
-      v = localStorage.getItem(VISITOR_KEY);
-    } catch (err) {}
-    if (!v) {
-      v = "v_" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
-      try {
-        localStorage.setItem(VISITOR_KEY, v);
-      } catch (err) {}
-    }
-    return v;
+    return X.identity.visitorId();
   }
 
   function userId() {
-    var p = X.auth.getProfile();
-    return (p && p.sub) || visitorId();
+    return X.identity.userId();
   }
 
   function starsEl() {

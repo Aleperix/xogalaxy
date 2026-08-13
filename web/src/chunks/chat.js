@@ -13,7 +13,6 @@
 
   var BACKEND = X.config.backend;
   var WS_BASE = BACKEND.replace(/^https:/, "wss:").replace(/^http:/, "ws:");
-  var NICK_KEY = "xogalaxy.nick";
   var LAST_READ_KEY = "xogalaxy.chat.lastRead";
   var MAX_MSGS = 200;
   var MAX_RETRY = 15000;
@@ -26,29 +25,23 @@
     if (!app) return null;
 
     var room = (app.getAttribute("data-room") || "general").slice(0, 64);
-    var defaultNick = app.getAttribute("data-nick") || "Anónimo";
     var nickname = null;
-    var customNick = null;
     function currentProfileName() {
       var p = X.auth.getProfile();
       return (p && p.name && p.name.trim()) || null;
     }
-    try {
-      customNick = localStorage.getItem(NICK_KEY);
-      nickname = customNick || currentProfileName() || defaultNick;
-    } catch (err) {
-      nickname = currentProfileName() || defaultNick;
-    }
+    nickname = currentProfileName() || X.identity.guestName();
 
     var root = utils.el("div", "xogalaxy-chat");
     var status = utils.el("p", "chat-status", "conectando…");
+    var session = utils.el("div", "chat-session");
     var list = utils.el("ol", "chat-msgs");
     var form = utils.el("form", "chat-form");
     var nickInput = utils.el("input", "chat-nick");
     nickInput.maxLength = 32;
-    nickInput.placeholder = "Nick";
+    nickInput.placeholder = "Tu nombre";
     nickInput.value = nickname;
-    nickInput.setAttribute("aria-label", "Tu apodo");
+    nickInput.setAttribute("aria-label", "Tu nombre");
     var textInput = utils.el("input", "chat-input");
     textInput.maxLength = 1000;
     textInput.placeholder = "Escribí un mensaje…";
@@ -60,6 +53,7 @@
     form.appendChild(textInput);
     form.appendChild(sendBtn);
     root.appendChild(status);
+    root.appendChild(session);
     root.appendChild(list);
     root.appendChild(form);
     app.appendChild(root);
@@ -140,6 +134,50 @@
       status.textContent = text;
       root.classList.toggle(ONLINE_CLASS, cls === "online");
       root.classList.toggle(OFFLINE_CLASS, cls === "offline");
+    }
+
+    function reconnect() {
+      if (ws) {
+        var old = ws;
+        ws = null;
+        try {
+          old.close();
+        } catch (err) {}
+      }
+      closed = false;
+      retries = 0;
+      global.setTimeout(connect, 200);
+    }
+
+    function renderSession() {
+      session.innerHTML = "";
+      var p = X.auth.getProfile();
+      if (p) {
+        if (p.picture) {
+          var img = utils.el("img", "chat-avatar");
+          img.src = p.picture;
+          img.alt = p.name || "";
+          img.width = 24;
+          img.height = 24;
+          session.appendChild(img);
+        }
+        var who = utils.el("span", "chat-who", p.name || "verificado");
+        session.appendChild(who);
+        var logout = utils.el("button", "chat-logout", "Salir");
+        logout.type = "button";
+        logout.addEventListener("click", function () {
+          X.auth.logout();
+        });
+        session.appendChild(logout);
+        nickInput.hidden = true;
+        return;
+      }
+      var googleSlot = utils.el("div", "chat-google");
+      session.appendChild(googleSlot);
+      X.auth.renderButton(googleSlot);
+      var hint = utils.el("span", "chat-guest", "Como " + X.identity.guestName());
+      session.appendChild(hint);
+      nickInput.hidden = false;
     }
 
     function findMessage(id) {
@@ -290,43 +328,30 @@
     });
 
     nickInput.addEventListener("change", function () {
-      var value = nickInput.value.trim().slice(0, 32) || defaultNick;
+      if (X.auth.getProfile()) return;
+      var value = X.identity.setGuestName(nickInput.value);
       nickInput.value = value;
-      customNick = value;
-      try {
-        localStorage.setItem(NICK_KEY, value);
-      } catch (err) {}
       if (value !== nickname) {
         nickname = value;
-        if (ws) {
-          var old = ws;
-          ws = null;
-          try {
-            old.close();
-          } catch (err) {}
-          closed = false;
-          retries = 0;
-          global.setTimeout(connect, 200);
-        }
+        reconnect();
       }
     });
 
     var unbindAuth = X.auth.onAuthChange(function () {
-      if (!customNick) {
-        var name = currentProfileName();
-        if (name && name !== nickname) {
+      renderSession();
+      var name = currentProfileName();
+      if (name) {
+        if (name !== nickname) {
           nickname = name;
           nickInput.value = name;
-          if (ws) {
-            var old = ws;
-            ws = null;
-            try {
-              old.close();
-            } catch (err) {}
-            closed = false;
-            retries = 0;
-            global.setTimeout(connect, 200);
-          }
+          reconnect();
+        }
+      } else {
+        var guest = X.identity.guestName();
+        if (guest !== nickname) {
+          nickname = guest;
+          nickInput.value = guest;
+          reconnect();
         }
       }
     });
@@ -364,6 +389,7 @@
       onViewportChange();
     }
 
+    renderSession();
     connect();
     return {
       root: root,

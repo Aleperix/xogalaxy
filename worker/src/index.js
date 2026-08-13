@@ -1,6 +1,6 @@
 import { Stats } from "./stats.js";
 import { Room } from "./room.js";
-import { getFollowers } from "./followers.js";
+import * as followers from "./followers.js";
 import { urlsFromSitemap, saveToWayback } from "./wayback.js";
 import { Auth, isOwner } from "./auth.js";
 import * as comments from "./comments.js";
@@ -14,8 +14,6 @@ export { Room } from "./room.js";
 const BLOG_ID = "6925527305408412397";
 const BLOG_URL = "https://xogalax.blogspot.com";
 const SITEMAP_URL = `${BLOG_URL}/sitemap.xml`;
-const FOLLOWERS_KV_KEY = "followers:count";
-const FOLLOWERS_CACHE_TTL = 1800;
 const VISITS_KEY = "visits";
 const COMMENT_RATE_LIMIT = 10;
 const COMMENT_BODY_MAX = 4000;
@@ -29,6 +27,7 @@ const RELEASES_RATE_LIMIT = 60;
 const RELEASES_CACHE = "public, max-age=3600";
 const RATING_RATE_LIMIT = 30;
 const REACTION_RATE_LIMIT = 30;
+const FOLLOW_RATE_LIMIT = 30;
 const ENGAGEMENT_TARGETS_MAX = 50;
 
 async function ensureComments(db) {
@@ -44,6 +43,11 @@ async function ensurePosts(db) {
 async function ensureEngagement(db) {
   const row = await db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='ratings'`).first();
   if (!row) await engagement.migrate(db);
+}
+
+async function ensureFollowers(db) {
+  const row = await db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='followers'`).first();
+  if (!row) await followers.migrate(db);
 }
 
 export default {
@@ -71,6 +75,12 @@ export default {
           );
         case "/followers":
           return handleFollowers(request, env, origin);
+        case "/followers/follow":
+          return handleFollowersFollow(request, env, origin);
+        case "/followers/unfollow":
+          return handleFollowersUnfollow(request, env, origin);
+        case "/followers/me":
+          return handleFollowersMe(request, env, origin);
         case "/visits":
           return handleVisits(request, env, origin);
         case "/auth/verify":
@@ -107,6 +117,10 @@ export default {
           return handlePostsPending(request, env, origin);
         case "/posts/approved":
           return handlePostsApproved(request, env, origin);
+        case "/posts/my":
+          return handlePostsMy(request, env, origin);
+        case "/posts/by-author":
+          return handlePostsByAuthor(request, env, origin);
         case "/posts/mod/review":
           return handlePostsReview(request, env, origin);
         case "/posts/delete":
@@ -442,11 +456,13 @@ async function handlePosts(request, env, origin) {
   if (!title || !text) {
     return json({ error: "title and body required" }, 400, cors(origin));
   }
-  let author = { sub: null, name: String(body.name || "").trim().slice(0, 40) };
+  let author = { sub: null, visitor: null, name: String(body.name || "").trim().slice(0, 40) };
   if (body.token) {
     const profile = await verifyProfile(env, body.token);
     if (!profile) return json({ error: "unauthorized" }, 401, cors(origin));
     author = profile;
+  } else {
+    author.visitor = String(body.visitor || "").trim().slice(0, 64);
   }
   const created = await posts.createPost(env.DB, { title, body: text, author });
   return json({ post: created }, 201, cors(origin));
@@ -470,6 +486,45 @@ async function handlePostsApproved(request, env, origin) {
   await ensurePosts(env.DB);
   const items = await posts.approvedPosts(env.DB);
   return json({ posts: items }, 200, cors(origin));
+}
+
+async function handlePostsMy(request, env, origin) {
+  if (request.method !== "GET") {
+    return json({ error: "method not allowed" }, 405, cors(origin));
+  }
+  const url = new URL(request.url);
+  await ensurePosts(env.DB);
+  const token = request.headers.get("X-XOGALAXY-Token") || url.searchParams.get("token") || "";
+  const profile = token ? await verifyProfile(env, token) : null;
+  if (token && !profile) {
+    return json({ error: "unauthorized" }, 401, cors(origin));
+  }
+  const visitor = String(url.searchParams.get("visitor") || "").trim().slice(0, 64);
+  if (!profile && !visitor) {
+    return json({ error: "unauthorized" }, 401, cors(origin));
+  }
+  const items = await posts.myPosts(env.DB, {
+    sub: profile ? profile.sub : null,
+    visitor: visitor || null,
+  });
+  return json({ posts: items }, 200, cors(origin));
+}
+
+async function handlePostsByAuthor(request, env, origin) {
+  if (request.method !== "GET") {
+    return json({ error: "method not allowed" }, 405, cors(origin));
+  }
+  const url = new URL(request.url);
+  await ensurePosts(env.DB);
+  const sub = String(url.searchParams.get("sub") || "").trim().replace(/[^A-Za-z0-9_-]/g, "");
+  if (!sub) {
+    return json({ error: "sub required" }, 400, cors(origin));
+  }
+  const token = request.headers.get("X-XOGALAXY-Token") || url.searchParams.get("token") || "";
+  const profile = token ? await verifyProfile(env, token) : null;
+  const includePending = profile && (profile.sub === sub || isOwner(env, profile.sub));
+  const items = await posts.authorPosts(env.DB, sub, includePending);
+  return json({ author: sub, posts: items }, 200, cors(origin));
 }
 
 async function handlePostsReview(request, env, origin) {
@@ -679,21 +734,73 @@ async function handleEngagement(request, env, origin) {
 // ---- followers / visits ----
 
 async function handleFollowers(request, env, origin) {
-  const lang = new URL(request.url).searchParams.get("lang") || "es";
-  try {
-    const data = await getFollowers({
-      blogId: BLOG_ID,
-      origin: BLOG_URL,
-      lang,
-      kv: env.XOGALAXY_KV,
-      cacheKey: FOLLOWERS_KV_KEY,
-      cacheTtl: FOLLOWERS_CACHE_TTL,
-    });
-    return json(data, 200, cors(origin));
-  } catch (err) {
-    console.error("followers error:", err);
-    return json({ error: "followers unavailable" }, 502, cors(origin));
+  if (request.method !== "GET") {
+    return json({ error: "method not allowed" }, 405, cors(origin));
   }
+  await ensureFollowers(env.DB);
+  const limit = Number(new URL(request.url).searchParams.get("limit")) || 100;
+  const [count, list] = await Promise.all([followers.countFollowers(env.DB), followers.listFollowers(env.DB, limit)]);
+  return json({ count, followers: list }, 200, cors(origin));
+}
+
+async function handleFollowersFollow(request, env, origin) {
+  if (request.method !== "POST") {
+    return json({ error: "method not allowed" }, 405, cors(origin));
+  }
+  await ensureFollowers(env.DB);
+  if (await rateLimited(env, request, "follow", FOLLOW_RATE_LIMIT)) {
+    return json({ error: "rate limited" }, 429, cors(origin));
+  }
+  let body;
+  try {
+    body = await request.json();
+  } catch (err) {
+    return json({ error: "invalid json" }, 400, cors(origin));
+  }
+  const profile = await verifyProfile(env, String(body.token || ""));
+  if (!profile) {
+    return json({ error: "unauthorized" }, 401, cors(origin));
+  }
+  const follower = await followers.follow(env.DB, profile);
+  const count = await followers.countFollowers(env.DB);
+  return json({ ok: true, following: true, follower, count }, 200, cors(origin));
+}
+
+async function handleFollowersUnfollow(request, env, origin) {
+  if (request.method !== "POST") {
+    return json({ error: "method not allowed" }, 405, cors(origin));
+  }
+  await ensureFollowers(env.DB);
+  if (await rateLimited(env, request, "follow", FOLLOW_RATE_LIMIT)) {
+    return json({ error: "rate limited" }, 429, cors(origin));
+  }
+  let body;
+  try {
+    body = await request.json();
+  } catch (err) {
+    return json({ error: "invalid json" }, 400, cors(origin));
+  }
+  const profile = await verifyProfile(env, String(body.token || ""));
+  if (!profile) {
+    return json({ error: "unauthorized" }, 401, cors(origin));
+  }
+  await followers.unfollow(env.DB, profile.sub);
+  const count = await followers.countFollowers(env.DB);
+  return json({ ok: true, following: false, count }, 200, cors(origin));
+}
+
+async function handleFollowersMe(request, env, origin) {
+  if (request.method !== "GET") {
+    return json({ error: "method not allowed" }, 405, cors(origin));
+  }
+  await ensureFollowers(env.DB);
+  const token = request.headers.get("X-XOGALAXY-Token") || new URL(request.url).searchParams.get("token") || "";
+  const profile = await verifyProfile(env, token);
+  if (!profile) {
+    return json({ error: "unauthorized" }, 401, cors(origin));
+  }
+  const row = await followers.getFollower(env.DB, profile.sub);
+  return json({ following: Boolean(row), follower: row }, 200, cors(origin));
 }
 
 async function handleVisits(request, env, origin) {
@@ -743,9 +850,11 @@ async function buildBackup(env) {
   await ensureComments(env.DB);
   await ensurePosts(env.DB);
   await ensureEngagement(env.DB);
+  await ensureFollowers(env.DB);
   const commentsExport = await comments.exportAll(env.DB);
   const postsExport = await posts.exportAll(env.DB);
   const engagementExport = await engagement.exportAll(env.DB);
+  const followersExport = await followers.exportAll(env.DB);
   const chat = {};
   for (const room of CHAT_ROOMS) {
     const stub = env.ROOM.getByName(room);
@@ -753,10 +862,11 @@ async function buildBackup(env) {
   }
   return {
     exportedAt: new Date().toISOString(),
-    schema: 3,
+    schema: 4,
     comments: commentsExport,
     posts: postsExport,
     engagement: engagementExport,
+    followers: followersExport,
     chat,
   };
 }

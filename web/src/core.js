@@ -233,6 +233,7 @@
     var icon = btn.querySelector("[data-lucide]");
     if (icon) icon.setAttribute("data-lucide", dark ? "sun" : "moon");
     initIcons();
+    X.hooks.run("theme", theme);
   }
   function setupTheme() {
     applyTheme(currentTheme());

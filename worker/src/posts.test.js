@@ -114,6 +114,31 @@ describe("posts storage (D1)", () => {
     expect(imported).toBe(1);
     expect((await posts.pendingPosts(env.DB))[0].id).toBe(p.id);
   });
+
+  it("myPosts mezcla aportes por sub y por visitor anónimo", async () => {
+    const a = await posts.createPost(env.DB, { title: "google", body: "x", author: { sub: "s1", name: "A" } });
+    await posts.createPost(env.DB, { title: "de otro", body: "x", author: { sub: "s2", name: "B" } });
+    const v = await posts.createPost(env.DB, {
+      title: "anónimo",
+      body: "x",
+      author: { sub: null, visitor: "vis-1", name: "Invitado" },
+    });
+    const mine = await posts.myPosts(env.DB, { sub: "s1", visitor: "vis-1" });
+    expect(mine.map((p) => p.id).sort()).toEqual([a.id, v.id].sort());
+  });
+
+  it("authorPosts muestra solo aprobados salvo includePending", async () => {
+    const p1 = await posts.createPost(env.DB, { title: "a", body: "x", author: { sub: "s1", name: "A" } });
+    const p2 = await posts.createPost(env.DB, { title: "b", body: "x", author: { sub: "s1", name: "A" } });
+    await posts.reviewPost(env.DB, p1.id, "approved");
+
+    const pub = await posts.authorPosts(env.DB, "s1", false);
+    expect(pub.map((p) => p.id)).toEqual([p1.id]);
+
+    const all = await posts.authorPosts(env.DB, "s1", true);
+    expect(all.map((p) => p.id).sort()).toEqual([p1.id, p2.id].sort());
+    expect(await posts.authorPosts(env.DB, "s9", false)).toEqual([]);
+  });
 });
 
 describe("posts HTTP", () => {
@@ -215,5 +240,79 @@ describe("posts HTTP", () => {
       })
     ).json();
     expect(pending.posts).toHaveLength(0);
+  });
+
+  it("GET /posts/my devuelve el historial del visitor anónimo o del sub", async () => {
+    const anon = await (
+      await exports.default.fetch("http://xogalaxy-backend.test/posts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Anónimo", body: "x", name: "Invitado", visitor: "vis-1" }),
+      })
+    ).json();
+    expect(anon.post.author.visitor).toBe("vis-1");
+
+    const byVisitor = await exports.default.fetch(
+      "http://xogalaxy-backend.test/posts/my?visitor=vis-1"
+    );
+    expect(byVisitor.status).toBe(200);
+    expect((await byVisitor.json()).posts).toHaveLength(1);
+
+    const token = await seedJwks();
+    const auth = await (
+      await exports.default.fetch("http://xogalaxy-backend.test/posts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Con Google", body: "x", token }),
+      })
+    ).json();
+
+    const byToken = await exports.default.fetch("http://xogalaxy-backend.test/posts/my", {
+      headers: { "X-XOGALAXY-Token": token },
+    });
+    expect(byToken.status).toBe(200);
+    const mine = (await byToken.json()).posts;
+    expect(mine.some((p) => p.id === auth.post.id)).toBe(true);
+    expect(mine.some((p) => p.id === anon.post.id)).toBe(false);
+
+    expect(
+      (await exports.default.fetch("http://xogalaxy-backend.test/posts/my")).status
+    ).toBe(401);
+  });
+
+  it("GET /posts/by-author muestra solo aprobados salvo que sea el propio autor", async () => {
+    const token = await seedJwks();
+    const p1 = await (
+      await exports.default.fetch("http://xogalaxy-backend.test/posts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "A1", body: "x", token }),
+      })
+    ).json();
+    await exports.default.fetch("http://xogalaxy-backend.test/posts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "A2", body: "x", token }),
+    });
+    await exports.default.fetch("http://xogalaxy-backend.test/posts/mod/review", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-XOGALAXY-Token": token },
+      body: JSON.stringify({ id: p1.post.id, action: "approve" }),
+    });
+
+    const publicView = await exports.default.fetch(
+      "http://xogalaxy-backend.test/posts/by-author?sub=google-user-1"
+    );
+    expect((await publicView.json()).posts).toHaveLength(1);
+
+    const ownView = await exports.default.fetch(
+      "http://xogalaxy-backend.test/posts/by-author?sub=google-user-1",
+      { headers: { "X-XOGALAXY-Token": token } }
+    );
+    expect((await ownView.json()).posts).toHaveLength(2);
+
+    expect(
+      (await exports.default.fetch("http://xogalaxy-backend.test/posts/by-author")).status
+    ).toBe(400);
   });
 });

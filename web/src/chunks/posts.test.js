@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import "../core.js";
 import "../api.js";
+import "./identity.js";
 import "./auth.js";
 import "../markdown.js";
 import "./posts.js";
@@ -84,6 +85,7 @@ describe("chunk posts (tool de aportes)", () => {
           expect(body.token).toBeFalsy();
           expect(body.title).toBe("Mi aporte");
           expect(body.body).toBe("# Contenido");
+          expect(body.visitor).toBeTruthy();
           return Promise.resolve(
             new Response(JSON.stringify({ post: { id: 1, status: "pending" } }), { status: 201 })
           );
@@ -184,5 +186,67 @@ describe("chunk posts (tool de aportes)", () => {
     document.querySelector(".pt-save-url").click();
     await flush();
     expect(urlSaved).toEqual({ id: 7, url: "https://xogalax.blogspot.com/2026/08/a.html" });
+  });
+
+  it("mis aportes muestra el historial y filtra por estado", async () => {
+    const seen = [];
+    mockBackend({
+      "/posts/my": (u) => {
+        seen.push(u.search);
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              posts: [
+                { id: 1, title: "Pendiente", body: "x", author: { name: "Yo" }, createdAt: 1700000000000, status: "pending" },
+                { id: 2, title: "Aprobado", body: "y", author: { name: "Yo" }, createdAt: 1700000000000, status: "approved" },
+                { id: 3, title: "Rechazado", body: "z", author: { name: "Yo" }, createdAt: 1700000000000, status: "rejected" },
+              ],
+            }),
+            { status: 200 }
+          )
+        );
+      },
+    });
+    window.XOGalaxy.posts.init();
+    document.querySelector(".pt-my-toggle").click();
+    await flush();
+
+    expect(seen[0]).toContain("visitor=");
+    expect(document.querySelectorAll(".pt-my-items .pt-post").length).toBe(3);
+    expect(document.querySelectorAll(".pt-filter").length).toBe(4);
+
+    document.querySelectorAll(".pt-filter")[2].click();
+    await flush();
+    const titles = [...document.querySelectorAll(".pt-my-items .pt-post-title")].map((n) => n.textContent);
+    expect(titles).toEqual(["Aprobado"]);
+  });
+
+  it("showAuthor abre un modal con los aportes del autor", async () => {
+    loadVendored();
+    mockBackend({
+      "/posts/by-author": () =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({
+              posts: [
+                { id: 9, title: "De Ana", body: "**hola**", author: { name: "Ana" }, createdAt: 1700000000000, status: "approved" },
+              ],
+            }),
+            { status: 200 }
+          )
+        ),
+    });
+    window.XOGalaxy.posts.init();
+    window.XOGalaxy.posts.showAuthor("sub-ana", "Ana");
+    await flush();
+
+    const modal = document.querySelector(".pt-modal");
+    expect(modal).toBeTruthy();
+    expect(modal.querySelector(".pt-modal-title").textContent).toContain("Ana");
+    expect(modal.querySelector(".pt-post-title").textContent).toBe("De Ana");
+    expect(modal.querySelector(".pt-post-body").innerHTML).toContain("<strong>hola</strong>");
+
+    modal.querySelector(".pt-modal-close").click();
+    expect(document.querySelector(".pt-modal")).toBeNull();
   });
 });

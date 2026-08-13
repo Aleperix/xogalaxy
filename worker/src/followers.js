@@ -1,36 +1,89 @@
-const COUNT_RE = /class="kSROCb">[^<]*\((\d+)\)/;
+/**
+ * XO Galaxy — seguidores en D1.
+ * Un seguidor es una sesión de Google (sub verificado). La identidad viene del
+ * ID token verificado en /auth/verify, nunca de un scraper de Blogger.
+ */
 
-function frameUrl(blogId, origin, lang) {
-  const params = new URLSearchParams({ pageSize: "21", hl: lang, origin });
-  return `https://www.blogger.com/followers/frame/${blogId}?${params}`;
+export async function migrate(db) {
+  await db.batch([
+    db.prepare(
+      `CREATE TABLE IF NOT EXISTS followers (
+        sub TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        picture TEXT,
+        created_at INTEGER NOT NULL
+      )`
+    ),
+  ]);
 }
 
-export async function getFollowers({ blogId, origin, lang, kv, cacheKey, cacheTtl }) {
-  const cached = await kv.get(cacheKey);
-  if (cached !== null) {
-    try {
-      const parsed = JSON.parse(cached);
-      return { count: parsed.count, source: "blogger", cached: true, at: parsed.at };
-    } catch (err) {
-      console.error("followers cache parse error:", err);
-    }
-  }
+function rowToFollower(r) {
+  return {
+    sub: r.sub,
+    name: r.name,
+    picture: r.picture || null,
+    createdAt: r.created_at,
+  };
+}
 
-  const res = await fetch(frameUrl(blogId, origin, lang), {
-    headers: { accept: "text/html" },
-    signal: AbortSignal.timeout(8000),
-  });
-  if (!res.ok) {
-    throw new Error(`followers frame HTTP ${res.status}`);
-  }
-  const html = await res.text();
-  const match = html.match(COUNT_RE);
-  if (!match) {
-    throw new Error("followers count not found in frame");
-  }
+export async function follow(db, { sub, name, picture }) {
+  await db
+    .prepare(
+      `INSERT INTO followers (sub, name, picture, created_at) VALUES (?, ?, ?, ?)
+       ON CONFLICT (sub) DO UPDATE SET name = excluded.name, picture = excluded.picture`
+    )
+    .bind(sub, String(name || "").slice(0, 40), picture || null, Date.now())
+    .run();
+  return rowToFollower(await db.prepare(`SELECT * FROM followers WHERE sub = ?`).bind(sub).first());
+}
 
-  const count = Number(match[1]);
-  const at = new Date().toISOString();
-  await kv.put(cacheKey, JSON.stringify({ count, at }), { expirationTtl: cacheTtl });
-  return { count, source: "blogger", cached: false, at };
+export async function unfollow(db, sub) {
+  const res = await db.prepare(`DELETE FROM followers WHERE sub = ?`).bind(sub).run();
+  return res.meta.changes > 0;
+}
+
+export async function countFollowers(db) {
+  const row = await db.prepare(`SELECT COUNT(*) AS c FROM followers`).first();
+  return Number(row ? row.c : 0);
+}
+
+export async function isFollowing(db, sub) {
+  const row = await db.prepare(`SELECT 1 FROM followers WHERE sub = ?`).bind(sub).first();
+  return Boolean(row);
+}
+
+export async function getFollower(db, sub) {
+  const row = await db.prepare(`SELECT * FROM followers WHERE sub = ?`).bind(sub).first();
+  return row ? rowToFollower(row) : null;
+}
+
+export async function listFollowers(db, limit = 100) {
+  const rows = await db
+    .prepare(`SELECT * FROM followers ORDER BY created_at ASC LIMIT ?`)
+    .bind(Math.min(Number(limit) || 100, 200))
+    .all();
+  return rows.results.map(rowToFollower);
+}
+
+export async function exportAll(db) {
+  const rows = await db.prepare(`SELECT * FROM followers ORDER BY sub ASC`).all();
+  return rows.results.map(rowToFollower);
+}
+
+export async function importAll(db, rows) {
+  let imported = 0;
+  for (const f of Array.isArray(rows) ? rows : []) {
+    if (!f || !f.sub) continue;
+    await db
+      .prepare(`INSERT OR IGNORE INTO followers (sub, name, picture, created_at) VALUES (?, ?, ?, ?)`)
+      .bind(
+        String(f.sub).slice(0, 64),
+        String(f.name || "Anónimo").slice(0, 40),
+        f.picture || null,
+        Number(f.createdAt) || Date.now()
+      )
+      .run();
+    imported += 1;
+  }
+  return imported;
 }

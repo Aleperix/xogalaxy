@@ -47,6 +47,18 @@
     return get("/followers");
   }
 
+  function followersFollow(token) {
+    return post("/followers/follow", { token: token || null });
+  }
+
+  function followersUnfollow(token) {
+    return post("/followers/unfollow", { token: token || null });
+  }
+
+  function followersMe(token) {
+    return get("/followers/me", { "X-XOGALAXY-Token": token || "" });
+  }
+
   function visits(hit) {
     return get("/visits" + (hit ? "?hit=1" : ""));
   }
@@ -107,6 +119,16 @@
   function postsApproved(token) {
     return get("/posts/approved", { "X-XOGALAXY-Token": token });
   }
+  function postsMy(token, visitor) {
+    if (token) return get("/posts/my", { "X-XOGALAXY-Token": token });
+    var q = visitor ? "?visitor=" + encodeURIComponent(visitor) : "";
+    return get("/posts/my" + q);
+  }
+  function postsByAuthor(sub, token) {
+    var url = "/posts/by-author?sub=" + encodeURIComponent(sub);
+    if (token) return get(url, { "X-XOGALAXY-Token": token });
+    return get(url);
+  }
   function postsReview(id, action, token) {
     return post("/posts/mod/review", { id: id, action: action }, { "X-XOGALAXY-Token": token });
   }
@@ -145,6 +167,9 @@
 
   X.api = {
     followers: followers,
+    followersFollow: followersFollow,
+    followersUnfollow: followersUnfollow,
+    followersMe: followersMe,
     visits: visits,
     chatHistory: chatHistory,
     chatSend: chatSend,
@@ -164,6 +189,8 @@
       create: postsCreate,
       modPending: postsPending,
       modApproved: postsApproved,
+      my: postsMy,
+      byAuthor: postsByAuthor,
       modReview: postsReview,
       remove: postsDelete,
       setUrl: postsSetUrl,
