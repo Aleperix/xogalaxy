@@ -7,11 +7,14 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "test": "vitest run",
-    "check": "node --check src/index.js && node --check src/stats.js && node --check src/followers.js && node --check src/profiles.js && node --check src/wayback.js && node --check src/room.js && node --check src/auth.js && node --check src/comments.js && node --check src/posts.js && node --check src/engagement.js"
+    "check": "node --check src/index.js && node --check src/stats.js && node --check src/followers.js && node --check src/profiles.js && node --check src/wayback.js && node --check src/room.js && node --check src/auth.js && node --check src/comments.js && node --check src/posts.js && node --check src/engagement.js && node --check src/email.js && node --check src/emails.js && node --check src/newsletter.js"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.20.2",
     "vitest": "^4.1.10",
     "wrangler": "^4.119.0"
+  },
+  "dependencies": {
+    "nodemailer": "^9.0.5"
   }
 }

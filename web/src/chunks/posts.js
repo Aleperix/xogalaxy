@@ -84,7 +84,7 @@
     var intro = utils.el(
       "p",
       "pt-intro",
-      "Escribí tu aporte en Markdown. Quedará en revisión y, si se aprueba, se publicará en el blog."
+      "Escribí tu aporte en Markdown: un juego, una actividad, un tutorial o un hallazgo perdido (lost media) de la era XO. Quedará en revisión y, si se aprueba, se publicará en el blog."
     );
     head.appendChild(title);
     head.appendChild(intro);

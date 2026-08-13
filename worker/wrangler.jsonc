@@ -46,9 +46,11 @@
     "ALLOWED_ORIGINS": "https://xogalax.blogspot.com,https://xogalaxy.pages.dev",
     "GOOGLE_CLIENT_ID": "876770060285-9t4e4oehkbpkvaqrfpt6fr1a2cdl8649.apps.googleusercontent.com",
     "OWNER_SUBS": "107284810985445490995",
-    "XOGALAXY_GH_REPO": "aleperix/xogalaxy-backup"
+    "XOGALAXY_GH_REPO": "aleperix/xogalaxy-backup",
+    "EMAIL_PROVIDER": "gmail",
+    "EMAIL_FROM_DOMAIN": "xogalaxy.com"
   },
   "triggers": {
-    "crons": ["17 4 * * *"]
+    "crons": ["17 4 * * *", "45 4 * * 1"]
   }
 }

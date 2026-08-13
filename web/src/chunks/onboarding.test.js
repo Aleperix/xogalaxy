@@ -100,6 +100,19 @@ describe("chunk onboarding (tour de primera visita)", () => {
     expect(document.querySelector(".onb-tip")._target).toBe(document.querySelector("#follow-btn"));
   });
 
+  it("hace scroll suave al destino en los pasos anclados", () => {
+    const spy = vi.fn();
+    window.HTMLElement.prototype.scrollIntoView = spy;
+    stubDom();
+    window.XOGalaxy.auth._setProfile({ sub: "g1", name: "Google", isOwner: false });
+    window.XOGalaxy.onboarding.start();
+    document.querySelector(".onb-input").value = "Nico";
+    document.querySelector(".onb-check").checked = true;
+    document.querySelector("#onb-next").click();
+    expect(spy).toHaveBeenCalledWith({ behavior: "smooth", block: "center" });
+    expect(spy.mock.instances[0]).toBe(document.querySelector("#follow-btn"));
+  });
+
   it("cae a tarjeta si el destino no existe", () => {
     document.body.innerHTML = `
       <div class="main-nav"><a href="#chat">Chat</a></div>

@@ -16,7 +16,6 @@
   </script>
   <meta charset='UTF-8'/>
   <meta content='width=device-width, initial-scale=1.0' name='viewport'/>
-  <meta name="follow.it-verification-code" content="SaDrjEcCVUXgrJnrhkwF"/>
   
   <!-- Inyección de etiquetas nativas de Blogger (Obligatorio) -->
   <b:include data='blog' name='all-head-content'/>
@@ -31,7 +30,7 @@
   <b:if cond='data:blog.metaDescription'>
     <meta expr:content='data:blog.metaDescription' property='og:description'/>
   <b:else/>
-    <meta content='Todo lo que buscás para tu laptop XO: juegos, actividades y trucos para XO 1.0, XO 1.5, Magallanes y Positivo BGH — hecho por la comunidad, para la comunidad.' property='og:description'/>
+    <meta content='Un espacio de nostalgia para revivir y modernizar las XO y su época: juegos, software y joyas (lost media) que volvemos a la vida, por y para la comunidad.' property='og:description'/>
   </b:if>
   <b:if cond='data:blog.pageType == "index"'>
     <meta content='https://cdn.jsdelivr.net/gh/Aleperix/xogalaxy@main/assets/og-home.png' property='og:image'/>
@@ -53,7 +52,7 @@
   <b:if cond='data:blog.metaDescription'>
     <meta expr:content='data:blog.metaDescription' name='description'/>
   <b:else/>
-    <meta content='Todo lo que buscás para tu laptop XO: juegos, actividades y trucos para XO 1.0, XO 1.5, Magallanes y Positivo BGH — hecho por la comunidad, para la comunidad.' name='description'/>
+    <meta content='Un espacio de nostalgia para revivir y modernizar las XO y su época: juegos, software y joyas (lost media) que volvemos a la vida, por y para la comunidad.' name='description'/>
   </b:if>
   <b:if cond='data:blog.pageType == "item"'>
     <title><data:blog.pageName/> - <data:blog.title/></title>
@@ -101,8 +100,8 @@
     .dropdown{position:relative}.dropdown summary{list-style:none}.dropdown summary::-webkit-details-marker{display:none}.dropdown-menu{position:absolute;z-index:60;top:calc(100% + 8px);left:0;width:180px;padding:5px;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 20px 40px rgba(0,0,0,.35)}
     .dropdown-menu a{display:block;padding:10px 12px;border-radius:6px;color:var(--ink)}.dropdown-menu a:hover{color:var(--signal);background:var(--panel-2)}
     .search-box{position:relative;width:210px;margin-left:4px}.search-box input{width:100%;height:40px;padding:8px 38px 8px 16px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:999px;font-size:14px}.search-box input::placeholder{color:var(--mute-2)}.search-box input:focus{outline:none;border-color:var(--orbit);box-shadow:0 0 0 1px var(--orbit)}.search-icon{position:absolute;top:50%;right:14px;color:var(--mute-2);font-size:14px;transform:translateY(-50%);pointer-events:none}
-    .newsletter{position:relative;z-index:1;border-bottom:1px solid var(--line);background:var(--panel-2)}.newsletter-inner{display:flex;align-items:center;justify-content:space-between;gap:20px;padding-block:16px}.newsletter-text{display:flex;align-items:center;gap:8px;margin:0;font-family:var(--font-data);font-size:14px;color:var(--mute)}.blink{color:var(--signal)}
-    .newsletter-form{display:flex;width:100%;max-width:360px;gap:8px}    .newsletter-form input{flex:1;min-width:0;padding:10px 16px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px}.newsletter-form input:focus{outline:none;border-color:var(--signal);box-shadow:0 0 0 1px var(--signal)}.newsletter-form button{flex-shrink:0;padding:10px 16px;color:var(--void);background:var(--ceibal);border:1px solid var(--ceibal);border-radius:6px;font-family:var(--font-display);font-size:12px;font-weight:700}
+    .newsletter{position:relative;z-index:1;border-bottom:1px solid var(--line);background:var(--panel-2)}.newsletter-inner{display:flex;align-items:center;justify-content:space-between;gap:20px;padding-block:16px;flex-wrap:wrap}.newsletter-text{display:flex;align-items:center;gap:8px;margin:0;font-family:var(--font-data);font-size:14px;color:var(--mute)}.blink{color:var(--signal)}
+    .newsletter-form{display:flex;width:100%;max-width:360px;gap:8px}    .newsletter-form input{flex:1;min-width:0;padding:10px 16px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px}.newsletter-form input:focus{outline:none;border-color:var(--signal);box-shadow:0 0 0 1px var(--signal)}.newsletter-form button{flex-shrink:0;padding:10px 16px;color:var(--void);background:var(--ceibal);border:1px solid var(--ceibal);border-radius:6px;font-family:var(--font-display);font-size:12px;font-weight:700}.newsletter-toggle{padding:4px 10px;color:var(--mute);background:transparent;border:1px dashed var(--line);border-radius:999px;font-family:var(--font-data);font-size:11px;cursor:pointer;white-space:nowrap;align-self:flex-start}.newsletter-toggle:hover,.newsletter-toggle.is-open{color:var(--signal);border-color:var(--signal)}.newsletter-extras{flex-basis:100%;display:flex;flex-direction:column;gap:8px}.newsletter-panel{width:100%;padding:14px;background:var(--bg);border:1px solid var(--line);border-radius:8px}.newsletter-panel-row{display:flex;gap:12px;flex-wrap:wrap}.newsletter-field{display:flex;flex-direction:column;gap:4px;flex:1;min-width:160px}.newsletter-field-label{font-family:var(--font-data);font-size:11px;color:var(--mute)}.newsletter-input{padding:8px 11px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;font-size:13px}.newsletter-input:focus{outline:none;border-color:var(--orbit);box-shadow:0 0 0 1px var(--orbit)}.newsletter-topics{display:flex;flex-wrap:wrap;gap:10px 16px;margin-top:12px}.newsletter-topic{display:inline-flex;align-items:center;gap:6px;font-family:var(--font-data);font-size:12px;color:var(--mute);cursor:pointer}.newsletter-topic input{accent-color:var(--signal)}.newsletter-status{width:100%;margin:10px 0 0;font-family:var(--font-data);font-size:13px;color:var(--signal)}.newsletter-status.is-error{color:#ff6b6b}.newsletter-status.is-ok{color:var(--signal)}#follow-btn,#participar,.main-nav details.dropdown,.main-nav a[href="#chat"]{scroll-margin-top:120px}
     .tag-cloud{padding-block:32px;border-bottom:1px solid var(--line)}.tag-cloud-inner{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:8px 14px}    .tag-cloud a:hover{color:var(--signal);text-decoration:underline}.tag-large{font-family:var(--font-display);font-size:18px}.tag-medium{font-size:14px;color:var(--ink)}.tag-small{font-size:12px;color:var(--mute)}
     .main-layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:48px;align-items:start;padding-top:56px;padding-bottom:56px}.section-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:32px}.posts-heading{grid-column:1/-1}.heading-title{display:inline-flex;align-items:center;gap:10px}.section-heading h2{margin:0;font-family:var(--font-display);font-size:20px;line-height:1.3}.heading-meta{display:inline-flex;align-items:center;gap:6px;color:var(--mute);font-family:var(--font-data);font-size:12px}.heading-meta a{color:var(--mute)}.heading-meta a:hover{color:var(--signal)}
     .posts{display:grid;gap:20px}.blog-posts{display:grid;gap:20px}.post{display:grid;grid-template-columns:minmax(0,1fr);gap:20px;align-items:start;padding:24px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);transition:border-color .2s,transform .2s}.post:hover{border-color:rgba(168,255,96,.5);transform:translateY(-2px)}.post:has(.post-cover){grid-template-columns:minmax(0,200px) minmax(0,1fr)}.post-cover{margin:0}.post-cover img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:10px;border:1px solid var(--line)}.post-content{min-width:0}
@@ -134,7 +133,7 @@
 
   <div class='status-bar'>
     <div class='container status-inner'>
-      <div><span class='status-signal'/>SEÑAL ACTIVA · PLAN CEIBAL · UY</div>
+      <div><span class='status-signal'/>SEÑAL ACTIVA · REVIVIENDO LA ERA XO · UY</div>
       <nav aria-label='Enlaces secundarios' class='status-nav'>
         <a href='#participar'>Participar</a>
         <a href='#enlazanos'>Enlázanos</a>
@@ -159,7 +158,7 @@
           <b:if cond='data:blog.metaDescription'>
             <data:blog.metaDescription/>
           <b:else/>
-            Todo lo que buscás para tu laptop XO: juegos, actividades y trucos para XO 1.0, XO 1.5, Magallanes y Positivo BGH — hecho por la comunidad, para la comunidad.
+            Un espacio de nostalgia para revivir y modernizar las XO y su época: juegos, software y joyas (lost media) que volvemos a la vida, por y para la comunidad.
           </b:if>
         </p>
 
@@ -230,8 +229,8 @@
 
   <section class='newsletter' id='participar'>
     <div class='container newsletter-inner'>
-      <p class='newsletter-text'><i data-lucide='mail'/><span class='blink'>▮</span>Recibí juegos y actividades nuevas cada semana en tu correo</p>
-      <form action='https://api.follow.it/subscription-form/SFcrSm9IM0xkZytqYWZ1QWVXcUY3aytRSjhzVlFseTRyWndhdzNsMy9IZjY0dFJNL0wvUEg3Q0x5a2VZZTN3TEZPckdEVnpLVmtLZXZJdm9yRW9MN01QTUVxREZycG9TVmU3UDdaME9FNm9ZSXJOY0FCVHpubDlHeE54RFJxQVh8S0piMXZhSnVsQ2x1NE9QWDJOaDQ2eloxdUxCK3NQSU9MRzluaXJHS3J3UT0=/8' class='newsletter-form' method='post'>
+      <p class='newsletter-text'><i data-lucide='mail'/><span class='blink'>▮</span>Recibí juegos, actividades y joyas de la época XO en tu correo</p>
+      <form class='newsletter-form' id='newsletter-form'>
         <label class='sr-only' for='email'>Correo electrónico</label>
         <input id='email' name='email' placeholder='tu@correo.com' required='required' type='email'/>
         <button type='submit'>Suscribirme</button>
@@ -310,7 +309,7 @@
       "datePublished": "<data:post.date.iso/>",
       "author": {"@type": "Person", "name": "<data:post.author.name/>", "url": "<data:post.author.profileUrl/>"},
       "publisher": {"@type": "Organization", "name": "XO Galaxy", "logo": {"@type": "ImageObject", "url": "https://cdn.jsdelivr.net/gh/Aleperix/xogalaxy@main/assets/favicon.png"}},
-      "description": "Todo lo que busc\u00e1s para tu laptop XO: juegos, actividades y trucos para XO 1.0, XO 1.5, Magallanes y Positivo BGH \u2014 hecho por la comunidad, para la comunidad."
+      "description": "Un espacio de nostalgia para revivir y modernizar las XO y su época: juegos, software y joyas (lost media) que volvemos a la vida, por y para la comunidad."
     }
     </script>
     </b:if>
@@ -1049,7 +1048,7 @@
         </div>
         <div class='follow-avatars' id='follow-avatars'></div>
         <button type='button' class='follow-btn' id='follow-btn'><i data-lucide='user-plus'/>Seguir</button>
-        <p class='sidebar-description'>Seguí la comunidad con tu cuenta de Google y mirá los aportes de cada quien desde su avatar.</p>
+        <p class='sidebar-description'>Un espacio de nostalgia para revivir y modernizar las XO y su época. Seguí la comunidad con tu cuenta de Google y mirá los aportes de cada quien desde su avatar.</p>
       </div>
 
       <div class='sidebar-card'>
@@ -1174,7 +1173,7 @@
       <nav aria-label='Pie de página' class='footer-nav'>
         <a href='#'><i data-lucide='mail'/>Contactar</a><a href='#'><i data-lucide='info'/>Acerca de</a><a expr:href='data:blog.homepageUrl + "p/condiciones-de-uso.html"'><i data-lucide='shield'/>Condiciones de uso</a><a expr:href='data:blog.homepageUrl + "p/politica-de-privacidad.html"'><i data-lucide='lock'/>Política de privacidad</a><a href='#'><i data-lucide='smartphone'/>Versión móvil</a>
       </nav>
-      <p class='copyright'>Comunidad independiente para usuarios de laptops XO / Plan Ceibal · Uruguay</p>
+      <p class='copyright'>Un espacio de nostalgia para revivir y modernizar las XO y su época · Comunidad independiente · Uruguay</p>
       <p class='footer-credit'>XO Galaxy Theme 2.0 · Autor: <a href='https://github.com/Aleperix' rel='noopener' target='_blank'>Aleperix</a> · <a href='mailto:aleperixx@gmail.com'>aleperixx@gmail.com</a></p>
     </div>
   </footer>

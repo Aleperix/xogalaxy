@@ -189,6 +189,11 @@
     return put("/profiles", data);
   }
 
+  // ---- newsletter (suscripción con doble opt-in) ----
+  function newsletterSubscribe(data) {
+    return post("/subscribe", data);
+  }
+
   X.api = {
     followers: followers,
     followersFollow: followersFollow,
@@ -222,6 +227,9 @@
     profiles: {
       get: profilesGet,
       save: profilesSave,
+    },
+    newsletter: {
+      subscribe: newsletterSubscribe,
     },
     release: release,
     rating: { get: ratingGet, set: ratingSet },

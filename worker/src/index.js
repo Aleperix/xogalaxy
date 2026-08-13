@@ -8,6 +8,9 @@ import * as posts from "./posts.js";
 import * as profiles from "./profiles.js";
 import * as engagement from "./engagement.js";
 import { fetchRelease } from "./releases.js";
+import * as newsletter from "./newsletter.js";
+import { sendEmail } from "./email.js";
+import * as emails from "./emails.js";
 
 export { Stats } from "./stats.js";
 export { Room } from "./room.js";
@@ -55,6 +58,11 @@ async function ensureFollowers(db) {
 async function ensureProfiles(db) {
   const row = await db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='profiles'`).first();
   if (!row) await profiles.migrate(db);
+}
+
+async function ensureNewsletter(db) {
+  const row = await db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='subscribers'`).first();
+  if (!row) await newsletter.migrate(db);
 }
 
 export default {
@@ -144,6 +152,14 @@ export default {
           return handleReaction(request, env, origin);
         case "/engagement":
           return handleEngagement(request, env, origin);
+        case "/subscribe":
+          return handleSubscribe(request, env, origin);
+        case "/subscribe/confirm":
+          return handleSubscribeConfirm(request, env, origin);
+        case "/unsubscribe":
+          return handleUnsubscribe(request, env, origin);
+        case "/preferences":
+          return handlePreferences(request, env, origin);
         default:
           return json({ error: "not found" }, 404, cors(origin));
       }
@@ -154,6 +170,15 @@ export default {
   },
 
   async scheduled(controller, env) {
+    if (controller && controller.cron === "45 4 * * 1") {
+      try {
+        const digest = await sendNewsletterDigest(env);
+        console.log("newsletter digest:", JSON.stringify(digest));
+      } catch (err) {
+        console.error("newsletter digest error:", err);
+      }
+    }
+
     const urls = [BLOG_URL + "/"];
     try {
       urls.push(...(await urlsFromSitemap(SITEMAP_URL)));
@@ -884,6 +909,201 @@ async function handleProfiles(request, env, origin) {
   return json({ error: "method not allowed" }, 405, cors(origin));
 }
 
+// ---- newsletter ----
+
+const NEWSLETTER_RATE_LIMIT = 5;
+
+function newsletterLinks(subscriber) {
+  const t = encodeURIComponent(subscriber.token);
+  return {
+    base: BLOG_URL,
+    confirm: `${BLOG_URL}/subscribe/confirm?t=${t}`,
+    unsubscribe: `${BLOG_URL}/unsubscribe?t=${t}`,
+    prefs: `${BLOG_URL}/preferences?t=${t}`,
+  };
+}
+
+async function handleSubscribe(request, env, origin) {
+  if (request.method !== "POST") return json({ error: "method not allowed" }, 405, cors(origin));
+  if (await rateLimited(env, request, "subscribe", NEWSLETTER_RATE_LIMIT)) {
+    return json({ error: "too many requests" }, 429, cors(origin));
+  }
+  await ensureNewsletter(env.DB);
+  let body;
+  try {
+    body = await request.json();
+  } catch (_) {
+    return json({ error: "invalid json" }, 400, cors(origin));
+  }
+  const email = String(body.email || "").trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.toLowerCase())) {
+    return json({ error: "email inválido" }, 400, cors(origin));
+  }
+  const res = await newsletter.subscribe(env.DB, { email, name: body.name, prefs: body.prefs });
+  if (res.alreadyActive) {
+    return json({ ok: true, message: "Ya estás suscripto a las novedades." }, 200, cors(origin));
+  }
+  const links = newsletterLinks(res.subscriber);
+  const mail = emails.confirmEmail(res.subscriber, links);
+  try {
+    await sendEmail(env, {
+      to: res.subscriber.email,
+      subject: mail.subject,
+      html: mail.html,
+      text: mail.text,
+      headers: { "List-Unsubscribe": `<${links.unsubscribe}>` },
+    });
+  } catch (err) {
+    console.error("confirm email error:", err);
+  }
+  return json({ ok: true, message: "Revisá tu casilla para confirmar la suscripción." }, 201, cors(origin));
+}
+
+async function handleSubscribeConfirm(request, env, origin) {
+  if (request.method !== "GET") return json({ error: "method not allowed" }, 405, cors(origin));
+  await ensureNewsletter(env.DB);
+  const token = new URL(request.url).searchParams.get("t") || "";
+  const s = await newsletter.confirm(env.DB, token);
+  if (!s) {
+    return html(
+      emails.page("Suscripción",
+        `<h1>Enlace inválido</h1><p>Este enlace de confirmación es inválido o ya fue usado. Si querés suscribirte, volvé a dejar tu correo en el blog.</p>` +
+        `<p><a class="btn" href="${BLOG_URL}">Volver a XO Galaxy</a></p>`),
+      400
+    );
+  }
+  return html(
+    emails.page("Suscripción confirmada",
+      `<h1>Estás adentro! 🎉</h1><p>Confirmamos tu suscripción a las novedades de XO Galaxy. Vas a recibir juegos, actividades, tutoriales y joyas perdidas de la época XO.</p>` +
+      `<p><a class="btn" href="${BLOG_URL}">Ir a XO Galaxy</a></p>`),
+    200
+  );
+}
+
+async function handleUnsubscribe(request, env, origin) {
+  if (request.method !== "GET") return json({ error: "method not allowed" }, 405, cors(origin));
+  await ensureNewsletter(env.DB);
+  const token = new URL(request.url).searchParams.get("t") || "";
+  const s = await newsletter.unsubscribe(env.DB, token);
+  if (!s) {
+    return html(
+      emails.page("Baja",
+        `<h1>Enlace inválido</h1><p>Este enlace de baja es inválido o ya fue procesado.</p>` +
+        `<p><a class="btn" href="${BLOG_URL}">Volver a XO Galaxy</a></p>`),
+      400
+    );
+  }
+  return html(
+    emails.page("Te diste de baja",
+      `<h1>Listo, te diste de baja</h1><p>No vas a recibir más novedades de XO Galaxy en <strong>${s.email}</strong>. Nos vemos en el blog!</p>` +
+      `<p><a class="btn" href="${BLOG_URL}">Volver a XO Galaxy</a></p>`),
+    200
+  );
+}
+
+async function handlePreferences(request, env, origin) {
+  await ensureNewsletter(env.DB);
+  const url = new URL(request.url);
+  const token = url.searchParams.get("t") || "";
+
+  if (request.method === "POST") {
+    let prefs = {};
+    const ctype = request.headers.get("Content-Type") || "";
+    if (ctype.includes("application/json")) {
+      try {
+        const body = await request.json();
+        prefs = body.prefs || body;
+      } catch (_) {
+        return json({ error: "invalid json" }, 400, cors(origin));
+      }
+    } else {
+      const fd = await request.formData();
+      const topics = fd.getAll("topics").filter(Boolean);
+      prefs = { topics, frequency: String(fd.get("frequency") || "weekly") };
+    }
+    const s = await newsletter.setPreferences(env.DB, token, prefs);
+    if (!s) {
+      return json({ error: "token inválido" }, 400, cors(origin));
+    }
+    return html(
+      emails.page("Preferencias guardadas",
+        `<h1>Preferencias guardadas</h1><p>Actualizamos tus temas y frecuencia. Cualquier cosa, siempre podés cambiarlas desde los mails que recibís.</p>` +
+        `<p><a class="btn" href="${BLOG_URL}">Volver a XO Galaxy</a></p>`),
+      200
+    );
+  }
+
+  if (request.method !== "GET") return json({ error: "method not allowed" }, 405, cors(origin));
+
+  const s = await newsletter.getByToken(env.DB, token);
+  if (!s) {
+    return html(
+      emails.page("Preferencias",
+        `<h1>Enlace inválido</h1><p>Este enlace de preferencias es inválido o ya fue procesado.</p>` +
+        `<p><a class="btn" href="${BLOG_URL}">Volver a XO Galaxy</a></p>`),
+      400
+    );
+  }
+  const checked = s.prefs.topics;
+  const topicInputs = emails.TOPICS.map(
+    (t) => `<label class="field"><input type="checkbox" name="topics" value="${t}" ${checked.includes(t) ? "checked" : ""} style="margin-right:6px"/>${emails.topicLabel(t)}</label>`
+  ).join("");
+  const freqOptions = [["weekly", "Semanal"], ["monthly", "Mensual"]].map(
+    ([v, l]) => `<option value="${v}" ${s.prefs.frequency === v ? "selected" : ""}>${l}</option>`
+  ).join("");
+  return html(
+    emails.page("Preferencias",
+      `<h1>Preferencias</h1>` +
+      `<form method="POST" action="/preferences?t=${encodeURIComponent(s.token)}">` +
+      `<div class="field"><label>Temas que te interesan</label>${topicInputs}</div>` +
+      `<div class="field"><label>Frecuencia</label><select name="frequency">${freqOptions}</select></div>` +
+      `<div class="field"><button>Guardar</button></div>` +
+      `</form>` +
+      `<p style="font-size:12px;color:#8b95a9">Recibís esta edición en <strong>${s.email}</strong>.</p>`),
+    200
+  );
+}
+
+export async function sendNewsletterDigest(env) {
+  await ensureNewsletter(env.DB);
+  const since = Date.now() - 7 * 86400000;
+  const recent = (await posts.approvedPosts(env.DB)).filter((p) => (p.approvedAt || 0) >= since);
+  const weekly = await newsletter.activeSubscribers(env.DB, {
+    frequency: "weekly",
+    dueBefore: Date.now() - 6 * 86400000,
+  });
+  const monthly = await newsletter.activeSubscribers(env.DB, {
+    frequency: "monthly",
+    dueBefore: Date.now() - 28 * 86400000,
+  });
+  const targets = [...weekly, ...monthly];
+  let sent = 0;
+  let failed = 0;
+  for (const s of targets) {
+    const links = newsletterLinks(s);
+    const mail = emails.digestEmail(s, recent, links);
+    try {
+      const info = await sendEmail(env, {
+        to: s.email,
+        subject: mail.subject,
+        html: mail.html,
+        text: mail.text,
+        headers: {
+          "List-Unsubscribe": `<${links.unsubscribe}>`,
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        },
+      });
+      await newsletter.logSend(env.DB, s.id, mail.subject, info.messageId, "sent");
+      sent += 1;
+    } catch (err) {
+      console.error("digest send error:", s.email, err);
+      await newsletter.logSend(env.DB, s.id, mail.subject, null, "failed");
+      failed += 1;
+    }
+  }
+  return { sent, failed, posts: recent.length, targets: targets.length };
+}
+
 // ---- helpers ----
 
 function authorizedMod(request, env) {
@@ -925,11 +1145,13 @@ async function buildBackup(env) {
   await ensureEngagement(env.DB);
   await ensureFollowers(env.DB);
   await ensureProfiles(env.DB);
+  await ensureNewsletter(env.DB);
   const commentsExport = await comments.exportAll(env.DB);
   const postsExport = await posts.exportAll(env.DB);
   const engagementExport = await engagement.exportAll(env.DB);
   const followersExport = await followers.exportAll(env.DB);
   const profilesExport = await profiles.exportAll(env.DB);
+  const newsletterExport = await newsletter.exportAll(env.DB);
   const chat = {};
   for (const room of CHAT_ROOMS) {
     const stub = env.ROOM.getByName(room);
@@ -937,12 +1159,13 @@ async function buildBackup(env) {
   }
   return {
     exportedAt: new Date().toISOString(),
-    schema: 5,
+    schema: 6,
     comments: commentsExport,
     posts: postsExport,
     engagement: engagementExport,
     followers: followersExport,
     profiles: profilesExport,
+    newsletter: newsletterExport,
     chat,
   };
 }
@@ -1006,6 +1229,17 @@ function json(body, status, headers) {
     status,
     headers: {
       "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "no-store",
+      ...headers,
+    },
+  });
+}
+
+function html(body, status, headers) {
+  return new Response(body, {
+    status,
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
       "Cache-Control": "no-store",
       ...headers,
     },

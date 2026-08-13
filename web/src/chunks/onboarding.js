@@ -61,7 +61,7 @@
       {
         mode: "card",
         title: "¡Bienvenido a XO Galaxy!",
-        text: "Todo lo que buscás para tu laptop XO, hecho por la comunidad.",
+        text: "Un espacio de nostalgia para revivir y modernizar las XO y su época: juegos, software y joyas (lost media) que volvemos a la vida.",
         body: "name-terms",
         name: guest,
         nextLabel: "Empezar",
@@ -94,7 +94,7 @@
         mode: "anchor",
         sel: "#participar",
         title: "Cómo participar",
-        text: "Mandanos tu tutorial, pregunta o hallazgo y lo sumamos al feed con tu nombre.",
+        text: "Suscribite al newsletter para recibir juegos y novedades, o mandanos tu tutorial, pregunta o hallazgo y lo sumamos al feed con tu nombre.",
         nextLabel: "Siguiente",
       },
       {
@@ -254,6 +254,15 @@
     ring.classList.toggle("onb-ring-below", placeBelow);
   }
 
+  function scrollToStep(step) {
+    if (step.mode !== "anchor") return;
+    var target = step.sel ? X.core.utils.qs(step.sel) : null;
+    if (!target) return;
+    if (typeof target.scrollIntoView === "function") {
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }
+
   function render() {
     if (!active || !host) return;
     if (card) {
@@ -276,11 +285,13 @@
         host.appendChild(tip);
         ring.classList.remove("onb-hide");
         positionTip();
+        scrollToStep(step);
         return;
       }
     }
     card = shell(step, "onb-card" + (isMobile ? " onb-sheet" : ""));
     host.appendChild(card);
+    scrollToStep(step);
   }
 
   function teardown() {
