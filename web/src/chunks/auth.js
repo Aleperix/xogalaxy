@@ -280,6 +280,9 @@
       return !!(profile && profile.isOwner);
     },
     _setProfile: setProfile,
+    _emit: function () {
+      emit();
+    },
     _setToken: function (t) {
       token = t || null;
     },

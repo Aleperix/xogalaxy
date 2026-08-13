@@ -137,8 +137,17 @@ describe("chunk auth", () => {
     expect(window.XOGalaxy.auth.getProfile()).toBeNull();
   });
 
-  it("token inválido no deja perfil seteado", async () => {
-    vi.stubGlobal("fetch", async () => new Response(JSON.stringify({ error: "unauthorized" }), { status: 401 }));
+  it("_emit notifica a los listeners de auth sin cambiar el perfil", async () => {
+    const calls = [];
+    const unsub = window.XOGalaxy.auth.onAuthChange((p) => calls.push(p));
+    window.XOGalaxy.auth._setProfile({ sub: "s1", name: "Ana" });
+    window.XOGalaxy.auth._emit();
+    expect(calls.length).toBe(2);
+    expect(calls[1]).toEqual({ sub: "s1", name: "Ana" });
+    unsub();
+  });
+
+  it("token inválido no deja perfil seteado", async () => {    vi.stubGlobal("fetch", async () => new Response(JSON.stringify({ error: "unauthorized" }), { status: 401 }));
     window.XOGalaxy.auth._handleCredential({ credential: "bad" });
     await flush();
     expect(window.XOGalaxy.auth.getProfile()).toBeNull();

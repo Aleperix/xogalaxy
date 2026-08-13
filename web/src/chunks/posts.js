@@ -692,8 +692,15 @@
         X.api.profiles
           .save(payload)
           .then(function () {
-            if (!token && X.identity && X.identity.setGuestName) {
-              X.identity.setGuestName(payload.name);
+            if (token) {
+              var p = X.auth.getProfile();
+              if (p) X.auth._setProfile(Object.assign({}, p, payload));
+              else if (X.auth._emit) X.auth._emit();
+            } else {
+              if (X.identity && X.identity.setGuestName) {
+                X.identity.setGuestName(payload.name);
+              }
+              if (X.auth._emit) X.auth._emit();
             }
             closeModal();
             showProfile({ sub: target.sub, visitor: target.visitor, name: payload.name, picture: payload.picture });

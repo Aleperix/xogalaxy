@@ -297,6 +297,9 @@ describe("chunk posts (tool de aportes)", () => {
     expect(modal.querySelector(".pt-profile-sub").textContent).toBe("Mis aportes");
     expect(modal.querySelector(".pt-post-title").textContent).toBe("Mi aporte");
 
+    let emitted = 0;
+    const unsub = window.XOGalaxy.auth.onAuthChange(() => emitted++);
+
     modal.querySelector(".pt-profile-edit").click();
     const nameInput = modal.querySelector(".pt-profile-form input.pt-name");
     nameInput.value = "Nuevo Nombre";
@@ -311,6 +314,82 @@ describe("chunk posts (tool de aportes)", () => {
       visitor: visitor,
     });
     expect(window.XOGalaxy.identity.guestName()).toBe("Nuevo Nombre");
+    expect(emitted).toBeGreaterThan(0);
+    unsub();
+  });
+
+  it("guardar el perfil de un usuario Google actualiza el perfil en memoria y emite auth", async () => {
+    loadVendored();
+    let saved = null;
+    mockBackend({
+      "/profiles": (u, opts, method) => {
+        if (method === "GET") {
+          return Promise.resolve(
+            new Response(JSON.stringify({ profile: null }), { status: 200 })
+          );
+        }
+        if (method === "PUT") {
+          saved = JSON.parse(opts.body);
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                profile: { name: saved.name, bio: saved.bio, picture: saved.picture },
+              }),
+              { status: 200 }
+            )
+          );
+        }
+        return Promise.resolve(new Response(JSON.stringify({ error: "not found" }), { status: 404 }));
+      },
+      "/posts/my": () =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({
+              posts: [
+                { id: 1, title: "Mi aporte", body: "x", author: { name: "Yo" }, createdAt: 1700000000000, status: "pending" },
+              ],
+            }),
+            { status: 200 }
+          )
+        ),
+    });
+    window.XOGalaxy.auth._setToken("jwt-token");
+    window.XOGalaxy.auth._setProfile({ sub: "g1", name: "Viejo", bio: "bio", picture: "p1", isOwner: false });
+    window.XOGalaxy.posts.init();
+    window.XOGalaxy.posts.showProfile({ sub: "g1", name: "Viejo" });
+    await flush();
+
+    const modal = document.querySelector(".pt-modal");
+    expect(modal.querySelector(".pt-profile-edit")).toBeTruthy();
+
+    let emitted = 0;
+    const unsub = window.XOGalaxy.auth.onAuthChange(() => emitted++);
+
+    modal.querySelector(".pt-profile-edit").click();
+    const fields = modal.querySelectorAll(".pt-profile-form input.pt-name");
+    const nameInput = fields[0];
+    nameInput.value = "Nuevo Nombre";
+    const bioInput = modal.querySelector(".pt-profile-bio-input");
+    bioInput.value = "bio nueva";
+    const picInput = fields[1];
+    picInput.value = "pic2";
+    const form = modal.querySelector(".pt-profile-form");
+    form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    await flush();
+
+    expect(saved).toEqual({
+      name: "Nuevo Nombre",
+      bio: "bio nueva",
+      picture: "pic2",
+      token: "jwt-token",
+    });
+    const p = window.XOGalaxy.auth.getProfile();
+    expect(p.name).toBe("Nuevo Nombre");
+    expect(p.bio).toBe("bio nueva");
+    expect(p.picture).toBe("pic2");
+    expect(p.isOwner).toBe(false);
+    expect(emitted).toBeGreaterThan(0);
+    unsub();
   });
 
   it("showProfile de un visitante anónimo sin perfil avisa que no hay perfil público", async () => {
