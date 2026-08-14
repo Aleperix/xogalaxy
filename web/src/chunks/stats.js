@@ -136,6 +136,7 @@
 
   function onAuth(profile) {
     renderFollowState();
+    loadFollowers();
     if (profile && pendingFollow) {
       pendingFollow = false;
       setFollow(true);

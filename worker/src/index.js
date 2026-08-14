@@ -222,10 +222,18 @@ async function handleAuthVerify(request, env, origin) {
     return json({ error: "invalid json" }, 400, cors(origin));
   }
   try {
+    await ensureProfiles(env.DB);
     const auth = new Auth(env);
     const profile = await auth.verify(body.token, env.GOOGLE_CLIENT_ID);
+    const merged = await profiles.mergeIdentity(env.DB, profile);
     return json(
-      { sub: profile.sub, name: profile.name, picture: profile.picture, isOwner: isOwner(env, profile.sub) },
+      {
+        sub: merged.sub,
+        name: merged.name,
+        bio: merged.bio,
+        picture: merged.picture,
+        isOwner: isOwner(env, merged.sub),
+      },
       200,
       cors(origin)
     );
@@ -278,9 +286,11 @@ async function handleChatMessage(request, env, origin) {
 
 async function verifyProfile(env, token) {
   try {
+    await ensureProfiles(env.DB);
     const auth = new Auth(env);
     const p = await auth.verify(token, env.GOOGLE_CLIENT_ID);
-    return { sub: p.sub, name: p.name || "", picture: p.picture || null };
+    const merged = await profiles.mergeIdentity(env.DB, p);
+    return { sub: merged.sub, name: merged.name || "", picture: merged.picture || null };
   } catch (err) {
     return null;
   }
@@ -903,6 +913,8 @@ async function handleProfiles(request, env, origin) {
     const row = await profiles.upsertProfile(env.DB, { sub, visitor, name, bio, picture });
     await ensurePosts(env.DB);
     await posts.updateAuthor(env.DB, { sub, visitor, name: row.name, picture: row.picture });
+    await ensureFollowers(env.DB);
+    await followers.syncProfile(env.DB, { sub, name: row.name, picture: row.picture });
     return json({ profile: row }, 200, cors(origin));
   }
 

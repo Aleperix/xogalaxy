@@ -137,6 +137,34 @@ describe("chunk stats", () => {
     vi.unstubAllGlobals();
   });
 
+  it("onAuth vuelve a cargar la lista de seguidores (refresco del sidebar al editar el perfil)", async () => {
+    let followersCalls = 0;
+    vi.stubGlobal("fetch", async (url) => {
+      const u = new URL(url, "http://localhost");
+      if (u.pathname === "/feeds/posts/summary") {
+        return new Response(JSON.stringify({ feed: { openSearch$totalResults: { $t: "1" } } }), { status: 200 });
+      }
+      if (u.pathname === "/followers") {
+        followersCalls += 1;
+        return new Response(JSON.stringify({ count: 3, followers: [] }), { status: 200 });
+      }
+      if (u.pathname === "/visits") {
+        return new Response("{}", { status: 200 });
+      }
+      return new Response("{}", { status: 404 });
+    });
+
+    window.XOGalaxy.stats.init();
+    await flush();
+    expect(followersCalls).toBe(1);
+
+    const onAuth = window.XOGalaxy.auth.onAuthChange.mock.calls[0][0];
+    onAuth(null);
+    await flush();
+    expect(followersCalls).toBeGreaterThan(1);
+    vi.unstubAllGlobals();
+  });
+
   it("sin sesión, click en Seguir dispara el login y queda pendiente de seguir", async () => {
     const reqs = [];
     vi.stubGlobal("fetch", async (url) => {

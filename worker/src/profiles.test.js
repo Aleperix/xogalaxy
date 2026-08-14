@@ -3,6 +3,7 @@ import { env, reset } from "cloudflare:test";
 import { exports } from "cloudflare:workers";
 import * as profiles from "./profiles.js";
 import * as posts from "./posts.js";
+import * as followers from "./followers.js";
 
 async function makeTestToken({ sub = "google-user-1", name = "Alice" } = {}) {
   const keyPair = await crypto.subtle.generateKey(
@@ -45,6 +46,14 @@ function request(path, opts) {
 function put(path, body) {
   return request(path, {
     method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body || {}),
+  });
+}
+
+function post(path, body) {
+  return request(path, {
+    method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body || {}),
   });
@@ -99,6 +108,16 @@ describe("profiles storage (D1)", () => {
     expect(await profiles.importAll(env.DB, data)).toBe(1);
     const p = await profiles.getProfile(env.DB, { sub: "u1" });
     expect(p).toMatchObject({ name: "Ana", bio: "bio" });
+  });
+
+  it("mergeIdentity pisa los claims de Google con el perfil editado", async () => {
+    const claims = { sub: "u1", name: "Alice", picture: "https://pic.example/a.png" };
+    const fallback = await profiles.mergeIdentity(env.DB, claims);
+    expect(fallback).toMatchObject({ sub: "u1", name: "Alice", bio: "", picture: "https://pic.example/a.png" });
+
+    await profiles.upsertProfile(env.DB, { sub: "u1", name: "Alice C.", bio: "Fan", picture: "https://p/new.png" });
+    const merged = await profiles.mergeIdentity(env.DB, claims);
+    expect(merged).toMatchObject({ sub: "u1", name: "Alice C.", bio: "Fan", picture: "https://p/new.png" });
   });
 });
 
@@ -173,6 +192,29 @@ describe("profiles HTTP", () => {
     expect(res.status).toBe(200);
     const all = await posts.exportAll(env.DB);
     expect(all[0].author.name).toBe("Alice C.");
+  });
+
+  it("PUT /profiles actualiza el snapshot del seguidor", async () => {
+    await followers.migrate(env.DB);
+    await followers.follow(env.DB, { sub: "google-user-1", name: "Alice", picture: "https://pic.example/a.png" });
+    const { token } = await makeTestToken();
+    const res = await put("/profiles", { token, name: "Alice C.", bio: "", picture: "https://p/new.png" });
+    expect(res.status).toBe(200);
+    const f = await followers.getFollower(env.DB, "google-user-1");
+    expect(f).toMatchObject({ name: "Alice C.", picture: "https://p/new.png" });
+  });
+
+  it("POST /auth/verify devuelve el perfil editado en D1, no los claims de Google", async () => {
+    const { token } = await makeTestToken();
+    const res = await post("/auth/verify", { token });
+    expect(res.status).toBe(200);
+    let data = await res.json();
+    expect(data).toMatchObject({ sub: "google-user-1", name: "Alice", picture: "https://pic.example/a.png", bio: "" });
+
+    await profiles.upsertProfile(env.DB, { sub: "google-user-1", name: "Alice C.", bio: "Fan del blog", picture: "https://p/new.png" });
+    const res2 = await post("/auth/verify", { token });
+    const data2 = await res2.json();
+    expect(data2).toMatchObject({ name: "Alice C.", bio: "Fan del blog", picture: "https://p/new.png", isOwner: true });
   });
 
   it("rate-limita PUT /profiles", async () => {

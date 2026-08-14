@@ -38,8 +38,7 @@ export async function getProfile(db, { sub = null, visitor = null }) {
   return row ? rowToProfile(row) : null;
 }
 
-export async function upsertProfile(db, { sub = null, visitor = null, name = "", bio = "", picture = null }) {
-  const cleanName = String(name || "").slice(0, 40) || "Anónimo";
+export async function upsertProfile(db, { sub = null, visitor = null, name = "", bio = "", picture = null }) {  const cleanName = String(name || "").slice(0, 40) || "Anónimo";
   const cleanBio = String(bio || "").slice(0, 300);
   const cleanPic = picture && /^https?:\/\//i.test(picture) ? String(picture).slice(0, 500) : null;
   const now = Date.now();
@@ -60,6 +59,14 @@ export async function upsertProfile(db, { sub = null, visitor = null, name = "",
 export async function exportAll(db) {
   const rows = await db.prepare(`SELECT * FROM profiles ORDER BY id ASC`).all();
   return rows.results.map(rowToProfile);
+}
+
+export async function mergeIdentity(db, claims) {
+  const row = await getProfile(db, { sub: claims.sub });
+  if (!row) {
+    return { sub: claims.sub, name: claims.name, bio: "", picture: claims.picture || null };
+  }
+  return { sub: claims.sub, name: row.name, bio: row.bio, picture: row.picture };
 }
 
 export async function importAll(db, rows) {

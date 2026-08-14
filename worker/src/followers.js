@@ -57,6 +57,14 @@ export async function getFollower(db, sub) {
   return row ? rowToFollower(row) : null;
 }
 
+export async function syncProfile(db, { sub, name, picture }) {
+  if (!sub) return;
+  await db
+    .prepare(`UPDATE followers SET name = ?, picture = ? WHERE sub = ?`)
+    .bind(String(name || "").slice(0, 40), picture || null, sub)
+    .run();
+}
+
 export async function listFollowers(db, limit = 100) {
   const rows = await db
     .prepare(`SELECT * FROM followers ORDER BY created_at ASC LIMIT ?`)
