@@ -1,6 +1,41 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { env, reset, runInDurableObject } from "cloudflare:test";
 import { exports } from "cloudflare:workers";
+import * as profiles from "./profiles.js";
+
+async function makeTestToken({ sub = "google-user-1", name = "Alice" } = {}) {
+  const keyPair = await crypto.subtle.generateKey(
+    { name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" },
+    true,
+    ["sign", "verify"]
+  );
+  const jwk = await crypto.subtle.exportKey("jwk", keyPair.publicKey);
+  const header = { alg: "RS256", kid: "test-kid", typ: "JWT" };
+  const payload = {
+    iss: "accounts.google.com",
+    aud: "test-client-id",
+    exp: Math.floor(Date.now() / 1000) + 3600,
+    sub,
+    name,
+    picture: "https://pic.example/a.png",
+  };
+  const enc = (obj) =>
+    btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(obj))))
+      .replace(/=/g, "")
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_");
+  const data = enc(header) + "." + enc(payload);
+  const sig = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", keyPair.privateKey, new TextEncoder().encode(data));
+  const sig64 = btoa(String.fromCharCode(...new Uint8Array(sig))).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+  await env.XOGALAXY_KV.put(
+    "auth:jwks",
+    JSON.stringify({
+      keys: [{ kty: "RSA", kid: "test-kid", n: jwk.n, e: jwk.e }],
+      expires: Date.now() + 3600 * 1000,
+    })
+  );
+  return { token: data + "." + sig64 };
+}
 
 describe("chat Room DO", () => {
   beforeEach(async () => {
@@ -25,6 +60,48 @@ describe("chat Room DO", () => {
     const history = await stub.history("general");
     expect(history).toHaveLength(1);
     expect(history[0].body).toBe("x");
+  });
+
+  it("updateAuthor reescribe el nombre y foto de los mensajes del autor", async () => {
+    const stub = env.ROOM.getByName("general");
+    const mine = await stub.sendMessage("general", "Alexis Peña", "hola", {
+      sub: "u1",
+      name: "Alexis Peña",
+      picture: "https://pic.example/a.png",
+    });
+    await stub.sendMessage("general", "Bob", "otro", { sub: "u2", name: "Bob", picture: null });
+
+    const res = await stub.updateAuthor("u1", "Aleperix", "https://p/new.png");
+    expect(res).toEqual({ ok: true });
+
+    const history = await stub.history("general");
+    const updated = history.find((m) => m.id === mine.id);
+    expect(updated.author).toMatchObject({ sub: "u1", name: "Aleperix", picture: "https://p/new.png" });
+    const bob = history.find((m) => m.author && m.author.sub === "u2");
+    expect(bob.author).toMatchObject({ sub: "u2", name: "Bob" });
+  });
+
+  it("verifiedAuthor mergea el perfil editado de D1 sobre los claims de Google", async () => {
+    const { token } = await makeTestToken();
+    const stub = env.ROOM.getByName("general");
+
+    await runInDurableObject(stub, async (instance) => {
+      const p = await instance.verifiedAuthor(token);
+      expect(p).toMatchObject({ sub: "google-user-1", name: "Alice", picture: "https://pic.example/a.png" });
+    });
+
+    await profiles.migrate(env.DB);
+    await profiles.upsertProfile(env.DB, {
+      sub: "google-user-1",
+      name: "Alice C.",
+      bio: "",
+      picture: "https://p/new.png",
+    });
+
+    await runInDurableObject(stub, async (instance) => {
+      const p = await instance.verifiedAuthor(token);
+      expect(p).toMatchObject({ sub: "google-user-1", name: "Alice C.", picture: "https://p/new.png" });
+    });
   });
 });
 

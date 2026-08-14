@@ -1,5 +1,6 @@
 import { DurableObject } from "cloudflare:workers";
 import { Auth } from "./auth.js";
+import { getProfile } from "./profiles.js";
 
 const NICK_MAX = 32;
 const BODY_MAX = 1000;
@@ -158,11 +159,29 @@ export class Room extends DurableObject {
     try {
       if (!this.auth) this.auth = new Auth(this.env);
       const profile = await this.auth.verify(token, this.env.GOOGLE_CLIENT_ID);
-      return { sub: profile.sub, name: profile.name || "", picture: profile.picture || null };
+      let merged = { sub: profile.sub, name: profile.name || "", picture: profile.picture || null };
+      try {
+        const row = await getProfile(this.env.DB, { sub: profile.sub });
+        if (row) merged = { sub: profile.sub, name: row.name, picture: row.picture };
+      } catch (err) {
+        console.error("chat profile merge error:", err);
+      }
+      return merged;
     } catch (err) {
       console.error("chat auth error:", err);
       return null;
     }
+  }
+
+  async updateAuthor(sub, name, picture) {
+    if (!sub) return { ok: false };
+    this.ctx.storage.sql.exec(
+      "UPDATE messages SET author_name = ?, author_pic = ? WHERE author_sub = ? AND deleted = 0",
+      String(name || "").slice(0, 40),
+      picture || null,
+      sub
+    );
+    return { ok: true };
   }
 
   export(room, limit = 5000) {

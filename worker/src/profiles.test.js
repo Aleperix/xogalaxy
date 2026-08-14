@@ -204,6 +204,20 @@ describe("profiles HTTP", () => {
     expect(f).toMatchObject({ name: "Alice C.", picture: "https://p/new.png" });
   });
 
+  it("PUT /profiles actualiza el autor de los mensajes del chat", async () => {
+    const stub = env.ROOM.getByName("general");
+    await stub.sendMessage("general", "Alexis Peña", "hola", {
+      sub: "google-user-1",
+      name: "Alexis Peña",
+      picture: "https://pic.example/a.png",
+    });
+    const { token } = await makeTestToken();
+    const res = await put("/profiles", { token, name: "Alice C.", bio: "", picture: "https://p/new.png" });
+    expect(res.status).toBe(200);
+    const history = await stub.history("general");
+    expect(history[0].author).toMatchObject({ sub: "google-user-1", name: "Alice C.", picture: "https://p/new.png" });
+  });
+
   it("POST /auth/verify devuelve el perfil editado en D1, no los claims de Google", async () => {
     const { token } = await makeTestToken();
     const res = await post("/auth/verify", { token });

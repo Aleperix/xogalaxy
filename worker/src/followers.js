@@ -73,6 +73,26 @@ export async function listFollowers(db, limit = 100) {
   return rows.results.map(rowToFollower);
 }
 
+export async function listFollowersMerged(db, limit = 100) {
+  const rows = await db
+    .prepare(
+      `SELECT f.sub, f.created_at,
+              COALESCE(p.name, f.name) AS name,
+              COALESCE(p.picture, f.picture) AS picture
+       FROM followers f
+       LEFT JOIN profiles p ON p.id = 's:' || f.sub
+       ORDER BY f.created_at ASC LIMIT ?`
+    )
+    .bind(Math.min(Number(limit) || 100, 200))
+    .all();
+  return rows.results.map((r) => ({
+    sub: r.sub,
+    name: r.name,
+    picture: r.picture || null,
+    createdAt: r.created_at,
+  }));
+}
+
 export async function exportAll(db) {
   const rows = await db.prepare(`SELECT * FROM followers ORDER BY sub ASC`).all();
   return rows.results.map(rowToFollower);

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { env, reset } from "cloudflare:test";
 import { exports } from "cloudflare:workers";
 import * as followers from "./followers.js";
+import * as profiles from "./profiles.js";
 
 async function makeTestToken({ sub = "google-user-1", name = "Alice" } = {}) {
   const keyPair = await crypto.subtle.generateKey(
@@ -108,6 +109,17 @@ describe("followers HTTP", () => {
     const data = await res.json();
     expect(data.count).toBe(1);
     expect(data.followers[0]).toMatchObject({ sub: "u1", name: "Ana" });
+  });
+
+  it("GET /followers refleja el perfil editado de D1 sobre el snapshot", async () => {
+    await followers.follow(env.DB, { sub: "u1", name: "Alexis Peña", picture: "https://pic.example/a.png" });
+    await profiles.migrate(env.DB);
+    await profiles.upsertProfile(env.DB, { sub: "u1", name: "Aleperix", bio: "", picture: "https://p/new.png" });
+
+    const res = await exports.default.fetch("http://xogalaxy-backend.test/followers");
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.followers[0]).toMatchObject({ sub: "u1", name: "Aleperix", picture: "https://p/new.png" });
   });
 
   it("POST /followers/follow con token válido sigue y devuelve count", async () => {

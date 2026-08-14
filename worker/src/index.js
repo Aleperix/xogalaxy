@@ -782,8 +782,9 @@ async function handleFollowers(request, env, origin) {
     return json({ error: "method not allowed" }, 405, cors(origin));
   }
   await ensureFollowers(env.DB);
+  await ensureProfiles(env.DB);
   const limit = Number(new URL(request.url).searchParams.get("limit")) || 100;
-  const [count, list] = await Promise.all([followers.countFollowers(env.DB), followers.listFollowers(env.DB, limit)]);
+  const [count, list] = await Promise.all([followers.countFollowers(env.DB), followers.listFollowersMerged(env.DB, limit)]);
   return json({ count, followers: list }, 200, cors(origin));
 }
 
@@ -915,6 +916,13 @@ async function handleProfiles(request, env, origin) {
     await posts.updateAuthor(env.DB, { sub, visitor, name: row.name, picture: row.picture });
     await ensureFollowers(env.DB);
     await followers.syncProfile(env.DB, { sub, name: row.name, picture: row.picture });
+    if (sub) {
+      try {
+        await env.ROOM.getByName("general").updateAuthor(sub, row.name, row.picture);
+      } catch (err) {
+        console.error("chat author backfill error:", err);
+      }
+    }
     return json({ profile: row }, 200, cors(origin));
   }
 
