@@ -11,6 +11,7 @@ import { fetchRelease } from "./releases.js";
 import * as newsletter from "./newsletter.js";
 import { sendEmail } from "./email.js";
 import * as emails from "./emails.js";
+import * as chatArchive from "./chatArchive.js";
 
 export { Stats } from "./stats.js";
 export { Room } from "./room.js";
@@ -65,6 +66,11 @@ async function ensureNewsletter(db) {
   if (!row) await newsletter.migrate(db);
 }
 
+async function ensureChatArchive(db) {
+  const row = await db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='chat_archive'`).first();
+  if (!row) await chatArchive.migrate(db);
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -112,6 +118,12 @@ export default {
           return handleChatMessage(request, env, origin);
         case "/chat/mod/delete":
           return handleChatModDelete(request, env, origin);
+        case "/chat/archive/days":
+          return handleChatArchiveDays(request, env, origin);
+        case "/chat/archive":
+          return handleChatArchive(request, env, origin);
+        case "/chat/archive/mod/delete":
+          return handleChatArchiveModDelete(request, env, origin);
         case "/comments":
           return handleComments(request, env, origin);
         case "/comments/counts":
@@ -170,6 +182,15 @@ export default {
   },
 
   async scheduled(controller, env) {
+    if (controller && controller.cron === "17 4 * * *") {
+      try {
+        const summary = await chatArchive.exportNightly(env, CHAT_ROOMS);
+        console.log("chat archive:", JSON.stringify(summary));
+      } catch (err) {
+        console.error("chat archive nightly error:", err);
+      }
+    }
+
     if (controller && controller.cron === "45 4 * * 1") {
       try {
         const digest = await sendNewsletterDigest(env);
@@ -317,6 +338,63 @@ async function handleChatModDelete(request, env, origin) {
   }
   const stub = env.ROOM.getByName(room);
   await stub.modDelete(room, id);
+  return json({ ok: true, id }, 200, cors(origin));
+}
+
+// ---- chat archive ----
+
+async function handleChatArchiveDays(request, env, origin) {
+  const url = new URL(request.url);
+  await ensureChatArchive(env.DB);
+  const room = (url.searchParams.get("room") || "general").slice(0, 64);
+  const days = await chatArchive.listDays(env.DB, room);
+  return json({ room, days }, 200, cors(origin));
+}
+
+async function handleChatArchive(request, env, origin) {
+  if (request.method !== "GET") {
+    return json({ error: "method not allowed" }, 405, cors(origin));
+  }
+  const url = new URL(request.url);
+  await ensureChatArchive(env.DB);
+  const room = (url.searchParams.get("room") || "general").slice(0, 64);
+  const day = url.searchParams.get("day");
+  if (!day || !/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+    return json({ error: "day required (YYYY-MM-DD)" }, 400, cors(origin));
+  }
+  const cursor = Number(url.searchParams.get("cursor")) || 0;
+  const limit = Number(url.searchParams.get("limit")) || 50;
+  const page = await chatArchive.listByDay(env.DB, room, day, cursor, limit);
+  return json(page, 200, cors(origin));
+}
+
+async function handleChatArchiveModDelete(request, env, origin) {
+  if (request.method !== "POST") {
+    return json({ error: "method not allowed" }, 405, cors(origin));
+  }
+  let body;
+  try {
+    body = await request.json();
+  } catch (err) {
+    return json({ error: "invalid json" }, 400, cors(origin));
+  }
+  const who = await ownerFromRequest(env, request, body);
+  if (!who) {
+    return json({ error: "unauthorized" }, 401, cors(origin));
+  }
+  const room = String(body.room || "general").slice(0, 64);
+  const id = Number(body.id);
+  if (!Number.isInteger(id)) {
+    return json({ error: "id required" }, 400, cors(origin));
+  }
+  await ensureChatArchive(env.DB);
+  await chatArchive.markDeleted(env.DB, room, id);
+  try {
+    const stub = env.ROOM.getByName(room);
+    await stub.modDelete(room, id);
+  } catch (err) {
+    console.error("chat archive live delete error:", err);
+  }
   return json({ ok: true, id }, 200, cors(origin));
 }
 
@@ -1166,12 +1244,14 @@ async function buildBackup(env) {
   await ensureFollowers(env.DB);
   await ensureProfiles(env.DB);
   await ensureNewsletter(env.DB);
+  await ensureChatArchive(env.DB);
   const commentsExport = await comments.exportAll(env.DB);
   const postsExport = await posts.exportAll(env.DB);
   const engagementExport = await engagement.exportAll(env.DB);
   const followersExport = await followers.exportAll(env.DB);
   const profilesExport = await profiles.exportAll(env.DB);
   const newsletterExport = await newsletter.exportAll(env.DB);
+  const chatArchiveExport = await chatArchive.exportAll(env.DB);
   const chat = {};
   for (const room of CHAT_ROOMS) {
     const stub = env.ROOM.getByName(room);
@@ -1179,13 +1259,14 @@ async function buildBackup(env) {
   }
   return {
     exportedAt: new Date().toISOString(),
-    schema: 6,
+    schema: 7,
     comments: commentsExport,
     posts: postsExport,
     engagement: engagementExport,
     followers: followersExport,
     profiles: profilesExport,
     newsletter: newsletterExport,
+    chat_archive: chatArchiveExport,
     chat,
   };
 }

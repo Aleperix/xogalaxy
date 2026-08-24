@@ -23,6 +23,7 @@
     X.posts.init();
     X.engagement.init();
     X.lightbox.init();
+    X.chatArchive.init();
     X.newsletter.init();
     X.onboarding.init();
   }

@@ -205,6 +205,28 @@ export class Room extends DurableObject {
     }));
   }
 
+  exportSince(room, sinceId = 0, limit = 5000) {
+    const rows = this.ctx.storage.sql
+      .exec(
+        `SELECT id, nickname, body, created_at, deleted, author_sub, author_name, author_pic FROM messages
+         WHERE room = ? AND id > ? ORDER BY id ASC LIMIT ?`,
+        room,
+        Number(sinceId) || 0,
+        Math.min(limit, 5000)
+      )
+      .toArray();
+    return rows.map((r) => ({
+      id: r.id,
+      nickname: r.nickname,
+      body: r.body,
+      createdAt: r.created_at,
+      deleted: r.deleted === 1,
+      author: r.author_sub
+        ? { sub: r.author_sub, name: r.author_name || r.nickname, picture: r.author_pic || null }
+        : null,
+    }));
+  }
+
   async modDelete(room, id) {
     this.ctx.storage.sql.exec("UPDATE messages SET deleted = 1 WHERE id = ? AND room = ?", id, room);
     this.broadcast(room, { type: "deleted", id });

@@ -122,6 +122,19 @@
     return post("/comments/delete", { id: id, token: token || null });
   }
 
+  // ---- archivo del chat ----
+  function chatArchiveDays(room) {
+    return get("/chat/archive/days?room=" + encodeURIComponent(room || "general"));
+  }
+  function chatArchiveList(room, day, cursor) {
+    var q = "/chat/archive?room=" + encodeURIComponent(room || "general") + "&day=" + encodeURIComponent(day);
+    if (cursor) q += "&cursor=" + String(cursor);
+    return get(q);
+  }
+  function chatArchiveModDelete(room, id, token) {
+    return post("/chat/archive/mod/delete", { room: room, id: id }, { "X-XOGALAXY-Token": token });
+  }
+
   // ---- aportes (tool de posts) ----
   function postsCreate(data) {
     return post("/posts", data);
@@ -202,6 +215,11 @@
     visits: visits,
     chatHistory: chatHistory,
     chatSend: chatSend,
+    archive: {
+      days: chatArchiveDays,
+      list: chatArchiveList,
+      modDelete: chatArchiveModDelete,
+    },
     authVerify: authVerify,
     authConfig: authConfig,
     comments: {
