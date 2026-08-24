@@ -24,6 +24,7 @@
     X.engagement.init();
     X.lightbox.init();
     X.chatArchive.init();
+    X.notifications.init();
     X.newsletter.init();
     X.onboarding.init();
   }

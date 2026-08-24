@@ -22,6 +22,12 @@ theme/    Template de Blogger (XML, fuente canónica; versiones numeradas solo e
 | `POST /chat/message` | Publica `{room, nickname, body}` en una sala |
 | `POST /chat/mod/delete` | Borrado soft `{room, id}` (Bearer `MOD_KEY`) |
 | `GET /chat/ws?room=X&nick=Y` | WebSocket Hibernation (chat en vivo) |
+| `GET /chat/archive/days?room=X` | Días archivados del chat (cron nocturno 4:17 → D1) |
+| `GET /chat/archive?room=X&day=YYYY-MM-DD&cursor=N` | Mensajes archivados de un día (paginado) |
+| `POST /chat/archive/mod/delete` | Borra del archivo y del chat vivo (owner/MOD_KEY) |
+| `GET /users/suggest?q=` | Sugerencias de usuarios para @menciones (cache 60s) |
+| `GET /notifications` | Notificaciones del usuario (`X-XOGALAXY-Token`) |
+| `POST /notifications/read` | Marca todas como leídas (token) |
 
 Orígenes permitidos vía `ALLOWED_ORIGINS` (CORS + validación). Extensible a dominios futuros.
 

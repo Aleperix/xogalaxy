@@ -1,6 +1,7 @@
 import { DurableObject } from "cloudflare:workers";
 import { Auth } from "./auth.js";
 import { getProfile } from "./profiles.js";
+import { notifyMentions, migrate as ensureMentionTables } from "./mentions.js";
 
 const NICK_MAX = 32;
 const BODY_MAX = 1000;
@@ -151,6 +152,19 @@ export class Room extends DurableObject {
   async sendMessage(room, nickname, body, author = null) {
     const msg = await this.postMessage(room, nickname, body, author);
     this.broadcast(room, { type: "message", message: msg });
+    if (author && author.sub) {
+      if (!this.notifReady) {
+        await ensureMentionTables(this.env.DB);
+        this.notifReady = true;
+      }
+      await notifyMentions(this.env.DB, {
+        text: body,
+        type: "mention_chat",
+        actor: { sub: author.sub, name: (msg.author && msg.author.name) || nickname, picture: author.picture },
+        excerpt: body,
+        ref: "chat",
+      });
+    }
     return msg;
   }
 

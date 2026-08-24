@@ -58,7 +58,133 @@
     root.appendChild(status);
     root.appendChild(list);
     root.appendChild(form);
+    var sugBox = utils.el("div", "chat-suggest");
+    sugBox.hidden = true;
+    sugBox.setAttribute("role", "listbox");
+    sugBox.setAttribute("aria-label", "Sugerencias de usuarios");
+    root.appendChild(sugBox);
     app.appendChild(root);
+
+    var sug = { open: false, items: [], index: 0, seq: 0, timer: null };
+
+    function closeSuggest() {
+      sug.open = false;
+      sug.items = [];
+      sug.index = 0;
+      sug.seq += 1;
+      if (sug.timer) {
+        global.clearTimeout(sug.timer);
+        sug.timer = null;
+      }
+      sugBox.hidden = true;
+      sugBox.innerHTML = "";
+    }
+
+    function mentionQuery() {
+      var caret = textInput.selectionStart == null ? textInput.value.length : textInput.selectionStart;
+      var before = textInput.value.slice(0, caret);
+      var m = before.match(/(^|\s)@([^\s@]{0,32})$/);
+      return m ? m[2] : null;
+    }
+
+    function renderSuggest() {
+      sugBox.innerHTML = "";
+      sug.items.forEach(function (u, i) {
+        var opt = utils.el("button", "chat-suggest-item" + (i === sug.index ? " active" : ""));
+        opt.type = "button";
+        opt.setAttribute("role", "option");
+        opt.setAttribute("aria-selected", i === sug.index ? "true" : "false");
+        if (u.picture) {
+          var av = utils.el("img", "chat-suggest-avatar");
+          av.src = u.picture;
+          av.alt = "";
+          av.width = 20;
+          av.height = 20;
+          opt.appendChild(av);
+        }
+        opt.appendChild(utils.el("span", "chat-suggest-name", u.name));
+        opt.addEventListener("mousedown", function (e) {
+          e.preventDefault();
+          chooseSuggest(i);
+        });
+        sugBox.appendChild(opt);
+      });
+      sugBox.hidden = false;
+      sug.open = true;
+    }
+
+    function chooseSuggest(i) {
+      var user = sug.items[i];
+      if (!user) return;
+      var name = String(user.name || "").trim().split(/\s+/)[0].slice(0, 32);
+      if (!name) {
+        closeSuggest();
+        return;
+      }
+      var caret = textInput.selectionStart == null ? textInput.value.length : textInput.selectionStart;
+      var before = textInput.value.slice(0, caret).replace(/@[^\s@]*$/, "@" + name + " ");
+      textInput.value = before + textInput.value.slice(caret);
+      var pos = before.length;
+      try {
+        textInput.setSelectionRange(pos, pos);
+      } catch (err) {}
+      closeSuggest();
+      textInput.focus();
+    }
+
+    function fetchSuggest(q) {
+      var seq = ++sug.seq;
+      api
+        .suggest(q)
+        .then(function (d) {
+          if (seq !== sug.seq) return;
+          var items = d.users || [];
+          if (!items.length) {
+            closeSuggest();
+            return;
+          }
+          sug.items = items;
+          sug.index = 0;
+          renderSuggest();
+        })
+        .catch(function () {});
+    }
+
+    textInput.addEventListener("input", function () {
+      var q = mentionQuery();
+      if (q === null || q.length < 2) {
+        closeSuggest();
+        return;
+      }
+      if (sug.timer) global.clearTimeout(sug.timer);
+      sug.timer = global.setTimeout(function () {
+        sug.timer = null;
+        fetchSuggest(q);
+      }, 140);
+    });
+
+    textInput.addEventListener("keydown", function (e) {
+      if (!sug.open) return;
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        sug.index = (sug.index + 1) % sug.items.length;
+        renderSuggest();
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        sug.index = (sug.index - 1 + sug.items.length) % sug.items.length;
+        renderSuggest();
+      } else if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault();
+        chooseSuggest(sug.index);
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        closeSuggest();
+      }
+    });
+
+    textInput.addEventListener("blur", function () {
+      global.setTimeout(closeSuggest, 120);
+    });
 
     var ws = null;
     var retries = 0;
@@ -212,6 +338,62 @@
       return null;
     }
 
+    function fmtTime(ts) {
+      try {
+        var d = new Date(Number(ts));
+        return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      } catch (err) {
+        return "";
+      }
+    }
+
+    function fmtFull(ts) {
+      try {
+        return new Date(Number(ts)).toLocaleString();
+      } catch (err) {
+        return "";
+      }
+    }
+
+    function highlightMentions(el) {
+      if (!el || typeof document.createTreeWalker !== "function") return;
+      var walker = document.createTreeWalker(el, 4, null);
+      var targets = [];
+      var node;
+      while ((node = walker.nextNode())) {
+        if (node.nodeValue && node.nodeValue.indexOf("@") !== -1) {
+          targets.push(node);
+        }
+      }
+      var re;
+      try {
+        re = new RegExp("(^|\\s)(@[\\p{L}\\p{N}][\\p{L}\\p{N}_.-]{1,31})", "gu");
+      } catch (err) {
+        re = /(^|\s)(@[A-Za-z0-9][A-Za-z0-9_.-]{1,31})/g;
+      }
+      targets.forEach(function (n) {
+        var rest = n.nodeValue;
+        var frag = document.createDocumentFragment();
+        var m;
+        var idx = 0;
+        re.lastIndex = 0;
+        while ((m = re.exec(rest)) !== null) {
+          var at = m.index;
+          var tokenStart = at + m[1].length;
+          if (tokenStart > idx) frag.appendChild(document.createTextNode(rest.slice(idx, tokenStart)));
+          if (m[1]) frag.appendChild(document.createTextNode(m[1]));
+          var span = document.createElement("span");
+          span.className = "chat-mention";
+          span.textContent = m[2];
+          frag.appendChild(span);
+          idx = m.index + m[0].length;
+        }
+        if (!idx) return;
+        if (idx < rest.length) frag.appendChild(document.createTextNode(rest.slice(idx)));
+        n.parentNode.replaceChild(frag, n);
+      });
+    }
+
     function msgEl(message) {
       var li = utils.el("li", "chat-msg");
       li.setAttribute("data-id", String(message.id));
@@ -219,11 +401,14 @@
       if (author && author.picture) {
         var img = utils.el("img", "chat-msg-avatar");
         img.src = author.picture;
-        img.alt = author.name || "";
+        img.alt = "";
         img.width = 28;
         img.height = 28;
+        img.loading = "lazy";
         li.appendChild(img);
       }
+      var main = utils.el("div", "chat-msg-main");
+      var head = utils.el("div", "chat-msg-head");
       var nameText = (author && author.name) || message.nickname;
       var meta;
       if (author && author.sub) {
@@ -239,14 +424,21 @@
       } else {
         meta = utils.el("span", "chat-msg-meta", nameText);
       }
+      head.appendChild(meta);
+      var time = utils.el("time", "chat-msg-time", fmtTime(message.createdAt));
+      time.setAttribute("datetime", new Date(Number(message.createdAt)).toISOString());
+      time.title = fmtFull(message.createdAt);
+      head.appendChild(time);
+      main.appendChild(head);
       var body = utils.el("span", "chat-msg-body");
       try {
         body.innerHTML = X.markdown.render(message.body, { sanitize: true });
       } catch (err) {
         body.textContent = message.body;
       }
-      li.appendChild(meta);
-      li.appendChild(body);
+      highlightMentions(body);
+      main.appendChild(body);
+      li.appendChild(main);
       return li;
     }
 
@@ -360,6 +552,7 @@
       var body = textInput.value.trim().slice(0, 1000);
       if (!body) return;
       textInput.value = "";
+      closeSuggest();
       send(body).catch(function () {
         setStatus("no se pudo enviar — reintentá", "offline");
       });

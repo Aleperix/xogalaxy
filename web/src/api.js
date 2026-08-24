@@ -135,6 +135,17 @@
     return post("/chat/archive/mod/delete", { room: room, id: id }, { "X-XOGALAXY-Token": token });
   }
 
+  // ---- menciones y notificaciones ----
+  function userSuggest(q) {
+    return get("/users/suggest?q=" + encodeURIComponent(String(q || "").slice(0, 32)));
+  }
+  function notificationsGet(token) {
+    return get("/notifications", { "X-XOGALAXY-Token": token || "" });
+  }
+  function notificationsRead(token) {
+    return post("/notifications/read", {}, { "X-XOGALAXY-Token": token || "" });
+  }
+
   // ---- aportes (tool de posts) ----
   function postsCreate(data) {
     return post("/posts", data);
@@ -219,6 +230,11 @@
       days: chatArchiveDays,
       list: chatArchiveList,
       modDelete: chatArchiveModDelete,
+    },
+    suggest: userSuggest,
+    notifications: {
+      get: notificationsGet,
+      read: notificationsRead,
     },
     authVerify: authVerify,
     authConfig: authConfig,

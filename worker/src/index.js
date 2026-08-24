@@ -12,6 +12,7 @@ import * as newsletter from "./newsletter.js";
 import { sendEmail } from "./email.js";
 import * as emails from "./emails.js";
 import * as chatArchive from "./chatArchive.js";
+import * as mentions from "./mentions.js";
 
 export { Stats } from "./stats.js";
 export { Room } from "./room.js";
@@ -71,6 +72,11 @@ async function ensureChatArchive(db) {
   if (!row) await chatArchive.migrate(db);
 }
 
+async function ensureNotifications(db) {
+  const row = await db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='notifications'`).first();
+  if (!row) await mentions.migrate(db);
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -124,6 +130,12 @@ export default {
           return handleChatArchive(request, env, origin);
         case "/chat/archive/mod/delete":
           return handleChatArchiveModDelete(request, env, origin);
+        case "/users/suggest":
+          return handleUsersSuggest(request, env, origin);
+        case "/notifications":
+          return handleNotifications(request, env, origin);
+        case "/notifications/read":
+          return handleNotificationsRead(request, env, origin);
         case "/comments":
           return handleComments(request, env, origin);
         case "/comments/counts":
@@ -398,6 +410,60 @@ async function handleChatArchiveModDelete(request, env, origin) {
   return json({ ok: true, id }, 200, cors(origin));
 }
 
+// ---- menciones y notificaciones ----
+
+async function handleUsersSuggest(request, env, origin) {
+  if (request.method !== "GET") {
+    return json({ error: "method not allowed" }, 405, cors(origin));
+  }
+  if (await rateLimited(env, request, "suggest", RELEASES_RATE_LIMIT)) {
+    return json({ error: "rate limited" }, 429, cors(origin));
+  }
+  const url = new URL(request.url);
+  const q = (url.searchParams.get("q") || "").trim();
+  if (q.length < 2) {
+    return json({ users: [] }, 200, Object.assign({}, cors(origin), { "Cache-Control": "public, max-age=60" }));
+  }
+  const users = await mentions.suggestUsers(env.DB, q, 8);
+  return json({ users }, 200, Object.assign({}, cors(origin), { "Cache-Control": "public, max-age=60" }));
+}
+
+function tokenFromRequest(request, body) {
+  return ((request.headers.get("X-XOGALAXY-Token") || (body && body.token) || "") + "").trim();
+}
+
+async function handleNotifications(request, env, origin) {
+  if (request.method !== "GET") {
+    return json({ error: "method not allowed" }, 405, cors(origin));
+  }
+  const who = await verifyProfile(env, tokenFromRequest(request, null));
+  if (!who || !who.sub) {
+    return json({ error: "unauthorized" }, 401, cors(origin));
+  }
+  await ensureNotifications(env.DB);
+  const data = await mentions.listNotifications(env.DB, who.sub);
+  return json(data, 200, cors(origin));
+}
+
+async function handleNotificationsRead(request, env, origin) {
+  if (request.method !== "POST") {
+    return json({ error: "method not allowed" }, 405, cors(origin));
+  }
+  let body;
+  try {
+    body = await request.json();
+  } catch (err) {
+    body = {};
+  }
+  const who = await verifyProfile(env, tokenFromRequest(request, body));
+  if (!who || !who.sub) {
+    return json({ error: "unauthorized" }, 401, cors(origin));
+  }
+  await ensureNotifications(env.DB);
+  const res = await mentions.markAllRead(env.DB, who.sub);
+  return json(res, 200, cors(origin));
+}
+
 // ---- comments ----
 
 async function handleComments(request, env, origin) {
@@ -587,6 +653,16 @@ async function handlePosts(request, env, origin) {
     author.visitor = String(body.visitor || "").trim().slice(0, 64);
   }
   const created = await posts.createPost(env.DB, { title, body: text, author });
+  if (author.sub) {
+    await ensureNotifications(env.DB);
+    await mentions.notifyMentions(env.DB, {
+      text: title + "\n" + text,
+      type: "mention_post",
+      actor: author,
+      excerpt: text,
+      ref: "post:" + created.id,
+    });
+  }
   return json({ post: created }, 201, cors(origin));
 }
 
@@ -1245,6 +1321,7 @@ async function buildBackup(env) {
   await ensureProfiles(env.DB);
   await ensureNewsletter(env.DB);
   await ensureChatArchive(env.DB);
+  await ensureNotifications(env.DB);
   const commentsExport = await comments.exportAll(env.DB);
   const postsExport = await posts.exportAll(env.DB);
   const engagementExport = await engagement.exportAll(env.DB);
@@ -1252,6 +1329,7 @@ async function buildBackup(env) {
   const profilesExport = await profiles.exportAll(env.DB);
   const newsletterExport = await newsletter.exportAll(env.DB);
   const chatArchiveExport = await chatArchive.exportAll(env.DB);
+  const notificationsExport = await mentions.exportAll(env.DB);
   const chat = {};
   for (const room of CHAT_ROOMS) {
     const stub = env.ROOM.getByName(room);
@@ -1259,7 +1337,7 @@ async function buildBackup(env) {
   }
   return {
     exportedAt: new Date().toISOString(),
-    schema: 7,
+    schema: 8,
     comments: commentsExport,
     posts: postsExport,
     engagement: engagementExport,
@@ -1267,6 +1345,7 @@ async function buildBackup(env) {
     profiles: profilesExport,
     newsletter: newsletterExport,
     chat_archive: chatArchiveExport,
+    notifications: notificationsExport,
     chat,
   };
 }
