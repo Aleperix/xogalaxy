@@ -17,6 +17,7 @@
   var STATUS = { PENDING: "pending", APPROVED: "approved", REJECTED: "rejected" };
   var STATUS_LABEL = { pending: "pendiente", approved: "aprobado", rejected: "rechazado" };
   var live = [];
+  var modalOpenCount = 0;
 
   function copyText(text, done) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -576,21 +577,50 @@
     body.appendChild(utils.el("p", "pt-none", "Cargando…"));
     modal.appendChild(head);
     modal.appendChild(body);
+    backdrop.setAttribute("role", "dialog");
+    backdrop.setAttribute("aria-modal", "true");
+    backdrop.setAttribute("aria-label", "Perfil");
     backdrop.appendChild(modal);
     document.body.appendChild(backdrop);
+    var lastFocus = document.activeElement;
+    modalOpenCount += 1;
+    document.body.classList.add("pt-open");
 
     function closeModal() {
+      if (!backdrop.isConnected) return;
       backdrop.remove();
-      document.removeEventListener("keydown", onKey);
+      modalOpenCount -= 1;
+      if (modalOpenCount <= 0) {
+        modalOpenCount = 0;
+        document.body.classList.remove("pt-open");
+      }
+      document.removeEventListener("keydown", onKey, true);
+      document.removeEventListener("focusin", trapFocus, true);
+      if (lastFocus && lastFocus.focus) {
+        try {
+          lastFocus.focus();
+        } catch (err) {}
+      }
     }
     function onKey(e) {
-      if (e.key === "Escape") closeModal();
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        closeModal();
+      }
+    }
+    function trapFocus(e) {
+      if (backdrop.contains(e.target)) return;
+      e.stopPropagation();
+      var first = utils.qs(".pt-modal-close", backdrop);
+      if (first) first.focus();
     }
     close.addEventListener("click", closeModal);
     backdrop.addEventListener("click", function (e) {
       if (e.target === backdrop) closeModal();
     });
-    document.addEventListener("keydown", onKey);
+    document.addEventListener("keydown", onKey, true);
+    document.addEventListener("focusin", trapFocus, true);
+    close.focus();
 
     var token = X.auth && X.auth.getToken ? X.auth.getToken() : null;
     var visitor = me.visitor;

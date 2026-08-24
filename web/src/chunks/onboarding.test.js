@@ -142,6 +142,25 @@ describe("chunk onboarding (tour de primera visita)", () => {
     expect(document.querySelector(".onb-host")).toBeNull();
   });
 
+  it("convierte el ícono de cierre a SVG con el botón ya en el DOM", () => {
+    const calls = [];
+    const original = window.XOGalaxy.core.initIcons;
+    window.XOGalaxy.core.initIcons = function () {
+      calls.push(document.querySelectorAll(".onb-close").length);
+      if (original) original.call(this);
+    };
+    try {
+      stubDom();
+      window.XOGalaxy.onboarding.start();
+      // initIcons debe correr después del append: al menos una llamada
+      // encuentra el botón presente en el documento.
+      expect(calls.length).toBeGreaterThan(0);
+      expect(Math.max(...calls)).toBeGreaterThan(0);
+    } finally {
+      window.XOGalaxy.core.initIcons = original;
+    }
+  });
+
   it("ESC también saltea", () => {
     stubDom();
     window.XOGalaxy.onboarding.start();

@@ -120,7 +120,6 @@
     b.setAttribute("aria-label", "Saltear introducción");
     b.innerHTML = '<i data-lucide="x"/>';
     b.addEventListener("click", skip);
-    if (X.core && X.core.initIcons) X.core.initIcons();
     return b;
   }
 
@@ -283,6 +282,7 @@
         tip = shell(step, "onb-tip");
         tip._target = target;
         host.appendChild(tip);
+        if (X.core && X.core.initIcons) X.core.initIcons();
         ring.classList.remove("onb-hide");
         positionTip();
         scrollToStep(step);
@@ -291,6 +291,7 @@
     }
     card = shell(step, "onb-card" + (isMobile ? " onb-sheet" : ""));
     host.appendChild(card);
+    if (X.core && X.core.initIcons) X.core.initIcons();
     scrollToStep(step);
   }
 
