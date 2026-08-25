@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import "../core.js";
 import "../api.js";
+import "../nick-style.js";
 import "./chat-archive.js";
 
 const X = () => window.XOGalaxy;

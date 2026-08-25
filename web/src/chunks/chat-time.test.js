@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import "../core.js";
 import "../api.js";
 import "../markdown.js";
+import "../nick-style.js";
 import "./auth.js";
 import "./identity.js";
 import "./chat.js";
@@ -167,5 +168,74 @@ describe("autocomplete de menciones", () => {
     expect(input.value.startsWith("@Bob ")).toBe(true);
     expect(sent).toHaveLength(0);
     void before;
+  });
+
+  it("la barra arranca oculta y sigue oculta tras elegir la mención", async () => {
+    window.XOGalaxy.chat.init();
+    const input = document.querySelector(".chat-input");
+    const box = document.querySelector(".chat-suggest");
+    expect(box.hidden).toBe(true);
+
+    await typeAt(input, "@Bo");
+    expect(box.hidden).toBe(false);
+    input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+    expect(box.hidden).toBe(true);
+
+    await typeAt(input, "@Bob y más texto");
+    expect(box.hidden).toBe(true);
+
+    await typeAt(input, "@Bob hola @Bo");
+    expect(box.hidden).toBe(false);
+  });
+});
+
+describe("tooltip de menciones", () => {
+  beforeEach(() => {
+    document.body.innerHTML = '<div id="chat-app" data-room="general"></div>';
+    localStorage.clear();
+    FakeWS.reset();
+    window.WebSocket = FakeWS;
+    window.IntersectionObserver = undefined;
+    delete window.marked;
+    delete window.DOMPurify;
+    window.XOGalaxy.chat.reset();
+    mockBackend({
+      "/users/suggest": (u) =>
+        new Response(
+          JSON.stringify({
+            users: [
+              { sub: "u1", name: "Bob García", picture: "https://p/bob.png" },
+              { sub: "u2", name: "Boby", picture: null },
+            ],
+          }),
+          { status: 200 }
+        ),
+    });
+  });
+
+  it("al pasar el mouse sobre una mención muestra el perfil resuelto", async () => {
+    window.XOGalaxy.chat.init();
+    const ts = Date.now();
+    FakeWS.last.readyState = 1;
+    FakeWS.last.fire("open");
+    FakeWS.last.fire("message", {
+      data: JSON.stringify({ type: "history", messages: [{ id: 1, nickname: "Ana", body: "hola @Bob", createdAt: ts }] }),
+    });
+
+    const mention = document.querySelector(".chat-mention");
+    const tip = document.querySelector(".chat-tip");
+    expect(tip).toBeTruthy();
+    expect(tip.hidden).toBe(true);
+
+    mention.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(tip.hidden).toBe(false);
+    expect(tip.querySelector(".chat-tip-name").textContent).toContain("Bob García");
+    expect(tip.querySelector(".chat-tip-badge")).toBeTruthy();
+
+    mention.dispatchEvent(new MouseEvent("mouseout", { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 150));
+    expect(tip.hidden).toBe(true);
   });
 });

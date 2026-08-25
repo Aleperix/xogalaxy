@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import "../core.js";
 import "../api.js";
 import "../markdown.js";
+import "../nick-style.js";
 import "./auth.js";
 import "./identity.js";
 import "./engagement.js";

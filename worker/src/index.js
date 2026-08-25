@@ -308,7 +308,7 @@ async function handleChatMessage(request, env, origin) {
     return json({ error: "invalid json" }, 400, cors(origin));
   }
   const room = String(body.room || "general").slice(0, 64);
-  const nickname = String(body.nickname || "").trim().slice(0, 32);
+  const nickname = String(body.nickname || "").trim().slice(0, 64);
   const text = String(body.body || "").trim().slice(0, 1000);
   if (!nickname || !text) {
     return json({ error: "nickname and body required" }, 400, cors(origin));

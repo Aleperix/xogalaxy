@@ -45,7 +45,7 @@
     if (author && author.sub) {
       var who = utils.el("button", "ca-user");
       who.type = "button";
-      who.textContent = nameText;
+      who.appendChild(X.nickStyle.render(nameText));
       who.title = "Ver perfil";
       who.addEventListener("click", function () {
         if (X.posts && X.posts.showProfile) {
@@ -54,7 +54,9 @@
       });
       head.appendChild(who);
     } else {
-      head.appendChild(utils.el("span", "ca-user", nameText));
+      var anon = utils.el("span", "ca-user");
+      anon.appendChild(X.nickStyle.render(nameText));
+      head.appendChild(anon);
     }
     head.appendChild(utils.el("time", "ca-time", fmtTime(message.createdAt)));
     main.appendChild(head);

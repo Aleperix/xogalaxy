@@ -3,7 +3,7 @@ import { Auth } from "./auth.js";
 import { getProfile } from "./profiles.js";
 import { notifyMentions, migrate as ensureMentionTables } from "./mentions.js";
 
-const NICK_MAX = 32;
+const NICK_MAX = 64;
 const BODY_MAX = 1000;
 
 export class Room extends DurableObject {
