@@ -133,7 +133,7 @@ describe("chunk chat", () => {
     chatApp().dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
 
     expect(ws.sent).toHaveLength(1);
-    expect(JSON.parse(ws.sent[0])).toEqual({ type: "chat", body: "mensaje de prueba", token: null });
+    expect(JSON.parse(ws.sent[0])).toEqual({ type: "chat", body: "mensaje de prueba", token: null, replyTo: null });
     expect(input.value).toBe("");
   });
 

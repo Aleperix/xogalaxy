@@ -45,6 +45,13 @@ export class Room extends DurableObject {
         INSERT INTO _sql_schema_migrations (id) VALUES (2);
       `);
     }
+    if (version < 3) {
+      sql.exec(`
+        ALTER TABLE messages ADD COLUMN reply_to INTEGER;
+        CREATE INDEX IF NOT EXISTS idx_messages_reply ON messages(reply_to);
+        INSERT INTO _sql_schema_migrations (id) VALUES (3);
+      `);
+    }
   }
 
   async fetch(request) {
@@ -82,9 +89,10 @@ export class Room extends DurableObject {
       const nickname = String(attachment.nickname || "Anónimo").slice(0, NICK_MAX);
       const body = String(data.body || "").trim().slice(0, BODY_MAX);
       if (!body) return;
+      const replyTo = Number(data.replyTo) || null;
 
       const author = await this.verifiedAuthor(data.token);
-      await this.sendMessage(room, nickname, body, author);
+      await this.sendMessage(room, nickname, body, author, replyTo);
       return;
     }
   }
@@ -107,13 +115,13 @@ export class Room extends DurableObject {
     console.log(`ws close room=${room} code=${code}`);
   }
 
-  history(room, limit = 50) {
+  history(room, limit = 50, beforeId = null) {
+    const bId = beforeId ? Number(beforeId) : null;
     const rows = this.ctx.storage.sql
       .exec(
-        `SELECT id, nickname, body, created_at, author_sub, author_name, author_pic FROM messages
-         WHERE room = ? AND deleted = 0 ORDER BY id DESC LIMIT ?`,
-        room,
-        Math.min(limit, 200)
+        `SELECT id, nickname, body, created_at, deleted, author_sub, author_name, author_pic, reply_to FROM messages
+         WHERE room = ? AND deleted = 0 ${bId ? "AND id < ?" : ""} ORDER BY id DESC LIMIT ?`,
+        ...(bId ? [room, bId, Math.min(limit, 200)] : [room, Math.min(limit, 200)])
       )
       .toArray()
       .reverse();
@@ -126,31 +134,33 @@ export class Room extends DurableObject {
       nickname: r.nickname,
       body: r.body,
       createdAt: r.created_at,
+      replyTo: r.reply_to || null,
       author: r.author_sub
         ? { sub: r.author_sub, name: r.author_name || r.nickname, picture: r.author_pic || null }
         : null,
     };
   }
 
-  async postMessage(room, nickname, body, author = null) {
+  async postMessage(room, nickname, body, author = null, replyTo = null) {
     const res = this.ctx.storage.sql
       .exec(
-        `INSERT INTO messages (room, nickname, body, created_at, author_sub, author_name, author_pic)
-         VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id, nickname, body, created_at, author_sub, author_name, author_pic`,
+        `INSERT INTO messages (room, nickname, body, created_at, author_sub, author_name, author_pic, reply_to)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id, nickname, body, created_at, author_sub, author_name, author_pic, reply_to`,
         room,
         nickname,
         body,
         Date.now(),
         author ? author.sub : null,
         author ? author.name : null,
-        author ? author.picture : null
+        author ? author.picture : null,
+        replyTo || null
       )
       .one();
     return this.rowToMessage(res);
   }
 
-  async sendMessage(room, nickname, body, author = null) {
-    const msg = await this.postMessage(room, nickname, body, author);
+  async sendMessage(room, nickname, body, author = null, replyTo = null) {
+    const msg = await this.postMessage(room, nickname, body, author, replyTo);
     this.broadcast(room, { type: "message", message: msg });
     if (author && author.sub) {
       if (!this.notifReady) {
@@ -222,7 +232,7 @@ export class Room extends DurableObject {
   exportSince(room, sinceId = 0, limit = 5000) {
     const rows = this.ctx.storage.sql
       .exec(
-        `SELECT id, nickname, body, created_at, deleted, author_sub, author_name, author_pic FROM messages
+        `SELECT id, nickname, body, created_at, deleted, author_sub, author_name, author_pic, reply_to FROM messages
          WHERE room = ? AND id > ? ORDER BY id ASC LIMIT ?`,
         room,
         Number(sinceId) || 0,
@@ -235,6 +245,7 @@ export class Room extends DurableObject {
       body: r.body,
       createdAt: r.created_at,
       deleted: r.deleted === 1,
+      replyTo: r.reply_to || null,
       author: r.author_sub
         ? { sub: r.author_sub, name: r.author_name || r.nickname, picture: r.author_pic || null }
         : null,

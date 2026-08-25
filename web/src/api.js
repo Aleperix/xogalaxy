@@ -76,14 +76,15 @@
     return get("/visits" + (hit ? "?hit=1" : ""));
   }
 
-  function chatHistory(room, limit) {
+  function chatHistory(room, limit, beforeId) {
     var url = "/chat/history?room=" + encodeURIComponent(room || "general");
     if (limit) url += "&limit=" + limit;
+    if (beforeId) url += "&beforeId=" + beforeId;
     return get(url);
   }
 
-  function chatSend(room, nickname, body, token) {
-    return post("/chat/message", { room: room, nickname: nickname, body: body, token: token || null });
+  function chatSend(room, nickname, body, token, replyTo) {
+    return post("/chat/message", { room: room, nickname: nickname, body: body, token: token || null, replyTo: replyTo || null });
   }
 
   // ---- autenticación (Google ID token) ----

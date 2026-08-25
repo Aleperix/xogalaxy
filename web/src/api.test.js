@@ -60,6 +60,6 @@ describe("api client", () => {
       return new Response("{}", { status: 200 });
     });
     await window.XOGalaxy.api.chatSend("general", "Ana", "hola", "jwt");
-    expect(sent).toEqual({ room: "general", nickname: "Ana", body: "hola", token: "jwt" });
+    expect(sent).toEqual({ room: "general", nickname: "Ana", body: "hola", token: "jwt", replyTo: null });
   });
 });

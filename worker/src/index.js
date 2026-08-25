@@ -292,8 +292,9 @@ async function handleChatHistory(request, env, origin) {
   const url = new URL(request.url);
   const room = (url.searchParams.get("room") || "general").slice(0, 64);
   const limit = Math.min(Number(url.searchParams.get("limit")) || 50, 200);
+  const beforeId = Number(url.searchParams.get("beforeId")) || null;
   const stub = env.ROOM.getByName(room);
-  const messages = await stub.history(room, limit);
+  const messages = await stub.history(room, limit, beforeId);
   return json({ room, messages }, 200, cors(origin));
 }
 
@@ -313,9 +314,10 @@ async function handleChatMessage(request, env, origin) {
   if (!nickname || !text) {
     return json({ error: "nickname and body required" }, 400, cors(origin));
   }
+  const replyTo = Number(body.replyTo) || null;
   const stub = env.ROOM.getByName(room);
   const author = body.token ? await verifyProfile(env, body.token) : null;
-  const message = await stub.sendMessage(room, nickname, text, author);
+  const message = await stub.sendMessage(room, nickname, text, author, replyTo);
   return json({ message }, 200, cors(origin));
 }
 

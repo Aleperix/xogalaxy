@@ -15,6 +15,8 @@
   var WS_BASE = BACKEND.replace(/^https:/, "wss:").replace(/^http:/, "ws:");
   var LAST_READ_KEY = "xogalaxy.chat.lastRead";
   var MAX_MSGS = 200;
+  var HISTORY_LIMIT = 50;
+  var MAX_REPLY_DEPTH = 2;
   var MAX_RETRY = 15000;
   var ONLINE_CLASS = "chat-online";
   var OFFLINE_CLASS = "chat-offline";
@@ -66,6 +68,16 @@
     var tip = utils.el("div", "chat-tip");
     tip.hidden = true;
     root.appendChild(tip);
+    var replyBar = utils.el("div", "chat-reply-bar");
+    replyBar.hidden = true;
+    var replyText = utils.el("span", "chat-reply-bar-text");
+    var replyCancel = utils.el("button", "chat-reply-cancel");
+    replyCancel.type = "button";
+    replyCancel.textContent = "\u00d7";
+    replyCancel.setAttribute("aria-label", "Cancelar respuesta");
+    replyBar.appendChild(replyText);
+    replyBar.appendChild(replyCancel);
+    root.insertBefore(replyBar, form);
     app.appendChild(root);
 
     var sug = { open: false, items: [], index: 0, seq: 0, timer: null };
@@ -268,6 +280,11 @@
     var unread = 0;
     var visible = false;
     var lastRead = readLastRead();
+    var replyingTo = null;
+    var msgMap = {};
+    var depthMap = {};
+    var loadMoreBtn = null;
+    var loadingMore = false;
 
     function saveLastRead(ts) {
       lastRead = ts;
@@ -563,8 +580,80 @@
       }
     });
 
-    function msgEl(message) {      var li = utils.el("li", "chat-msg");
+    function loadMoreClick() {
+      if (loadingMore) return;
+      var first = list.querySelector(".chat-msg[data-id]");
+      if (!first) return;
+      var beforeId = Number(first.getAttribute("data-id"));
+      if (!beforeId) return;
+      loadingMore = true;
+      var btn = loadMoreBtn ? loadMoreBtn.querySelector(".chat-load-more-btn") : null;
+      if (btn) btn.textContent = "Cargando…";
+      var scrollH = list.scrollHeight;
+      api
+        .chatHistory(room, HISTORY_LIMIT, beforeId)
+        .then(function (d) {
+          var msgs = d.messages || [];
+          if (!msgs.length) {
+            if (loadMoreBtn && loadMoreBtn.parentNode) loadMoreBtn.hidden = true;
+            return;
+          }
+          msgs.forEach(function (m) {
+            var li = buildMsgEl(m);
+            if (loadMoreBtn && loadMoreBtn.parentNode) {
+              list.insertBefore(li, loadMoreBtn.nextSibling);
+            } else {
+              list.insertBefore(li, list.firstChild);
+            }
+          });
+          list.scrollTop = list.scrollHeight - scrollH;
+        })
+        .catch(function () {})
+        .then(function () {
+          loadingMore = false;
+          if (btn) btn.textContent = "Cargar más";
+        });
+    }
+
+    replyCancel.addEventListener("click", function () {
+      replyingTo = null;
+      replyBar.hidden = true;
+    });
+
+    function startReply(msgId) {
+      var m = msgMap[msgId];
+      if (!m) return;
+      replyingTo = m;
+      replyText.textContent = "Respondiendo a " + X.nickStyle.plain((m.author && m.author.name) || m.nickname);
+      replyBar.hidden = false;
+      textInput.focus();
+    }
+
+    function scrollToMsg(id) {
+      var el = list.querySelector('.chat-msg[data-id="' + id + '"]');
+      if (!el) return;
+      el.classList.add("chat-highlight");
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      global.setTimeout(function () {
+        el.classList.remove("chat-highlight");
+      }, 1200);
+    }
+
+    function buildMsgEl(message) {
+      var depth = depthMap[message.id] || 0;
+      if (message.replyTo && depthMap[message.replyTo] != null) {
+        depth = depthMap[message.replyTo] + 1;
+        depthMap[message.id] = depth;
+      } else if (message.replyTo) {
+        depth = 1;
+        depthMap[message.id] = depth;
+      } else {
+        depthMap[message.id] = 0;
+      }
+      msgMap[message.id] = message;
+      var li = utils.el("li", "chat-msg");
       li.setAttribute("data-id", String(message.id));
+      li.setAttribute("data-depth", String(depth));
       var author = message.author;
       if (author && author.picture) {
         var img = utils.el("img", "chat-msg-avatar");
@@ -576,6 +665,19 @@
         li.appendChild(img);
       }
       var main = utils.el("div", "chat-msg-main");
+      if (message.replyTo && msgMap[message.replyTo]) {
+        var parent = msgMap[message.replyTo];
+        var ctx = utils.el("div", "chat-reply-ctx");
+        ctx.setAttribute("data-reply-to", String(message.replyTo));
+        var ctxName = utils.el("span", "chat-reply-ctx-name");
+        ctxName.appendChild(X.nickStyle.render((parent.author && parent.author.name) || parent.nickname));
+        ctx.appendChild(ctxName);
+        ctx.appendChild(utils.el("span", "chat-reply-ctx-text", X.nickStyle.plain(parent.body)));
+        ctx.addEventListener("click", function () {
+          scrollToMsg(message.replyTo);
+        });
+        main.appendChild(ctx);
+      }
       var head = utils.el("div", "chat-msg-head");
       var nameText = (author && author.name) || message.nickname;
       var meta;
@@ -599,6 +701,16 @@
       time.setAttribute("datetime", new Date(Number(message.createdAt)).toISOString());
       time.title = fmtFull(message.createdAt);
       head.appendChild(time);
+      if (depth < MAX_REPLY_DEPTH) {
+        var replyBtn = utils.el("button", "chat-reply-btn");
+        replyBtn.type = "button";
+        replyBtn.title = "Responder";
+        replyBtn.setAttribute("aria-label", "Responder a " + X.nickStyle.plain(nameText));
+        replyBtn.addEventListener("click", function () {
+          startReply(message.id);
+        });
+        head.appendChild(replyBtn);
+      }
       main.appendChild(head);
       var body = utils.el("span", "chat-msg-body");
       try {
@@ -613,9 +725,16 @@
     }
 
     function append(message) {
-      var li = msgEl(message);
+      var li = buildMsgEl(message);
       list.appendChild(li);
-      while (list.children.length > MAX_MSGS) list.removeChild(list.firstChild);
+      while (list.children.length > MAX_MSGS) {
+        var first = list.querySelector(".chat-msg[data-id]");
+        if (first) {
+          delete msgMap[first.getAttribute("data-id")];
+          delete depthMap[first.getAttribute("data-id")];
+        }
+        list.removeChild(list.firstChild);
+      }
       list.scrollTop = list.scrollHeight;
     }
 
@@ -638,9 +757,20 @@
         return;
       }
       if (data.type === "history") {
+        msgMap = {};
+        depthMap = {};
+        replyingTo = null;
+        replyBar.hidden = true;
         list.innerHTML = "";
         var messages = data.messages || [];
         messages.forEach(append);
+        loadMoreBtn = utils.el("li", "chat-load-more");
+        var loadMoreInner2 = utils.el("button", "chat-load-more-btn", "Cargar más");
+        loadMoreBtn.appendChild(loadMoreInner2);
+        loadMoreInner2.addEventListener("click", loadMoreClick);
+        if (messages.length >= HISTORY_LIMIT) {
+          list.insertBefore(loadMoreBtn, list.firstChild);
+        }
         var maxTs = messages.reduce(function (m, x) {
           return x.createdAt > m ? x.createdAt : m;
         }, 0);
@@ -702,21 +832,33 @@
     function goOffline() {
       online = false;
       setStatus("solo lectura — sin conexión", "offline");
+      msgMap = {};
+      depthMap = {};
+      replyingTo = null;
+      replyBar.hidden = true;
       api.chatHistory(room)
         .then(function (d) {
           list.innerHTML = "";
           (d.messages || []).forEach(append);
+          loadMoreBtn = utils.el("li", "chat-load-more");
+          var b = utils.el("button", "chat-load-more-btn", "Cargar más");
+          loadMoreBtn.appendChild(b);
+          b.addEventListener("click", loadMoreClick);
+          if ((d.messages || []).length >= HISTORY_LIMIT) {
+            list.insertBefore(loadMoreBtn, list.firstChild);
+          }
         })
         .catch(function () {});
     }
 
-    function send(body) {
+    function send(body, replyMsg) {
       var token = X.auth.getToken();
+      var replyTo = replyMsg ? replyMsg.id : null;
       if (online && ws && ws.readyState === 1) {
-        ws.send(JSON.stringify({ type: "chat", body: body, token: token }));
+        ws.send(JSON.stringify({ type: "chat", body: body, token: token, replyTo: replyTo }));
         return Promise.resolve();
       }
-      return api.chatSend(room, nickname, body, token).then(function (d) {
+      return api.chatSend(room, nickname, body, token, replyTo).then(function (d) {
         if (d && d.message) append(d.message);
       });
     }
@@ -725,9 +867,12 @@
       e.preventDefault();
       var body = textInput.value.trim().slice(0, 1000);
       if (!body) return;
+      var replyMsg = replyingTo;
       textInput.value = "";
       closeSuggest();
-      send(body).catch(function () {
+      replyingTo = null;
+      replyBar.hidden = true;
+      send(body, replyMsg).catch(function () {
         setStatus("no se pudo enviar — reintentá", "offline");
       });
     });

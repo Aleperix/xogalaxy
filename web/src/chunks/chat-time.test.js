@@ -239,3 +239,155 @@ describe("tooltip de menciones", () => {
     expect(tip.hidden).toBe(true);
   });
 });
+
+describe("respuestas anidadas", () => {
+  beforeEach(() => {
+    document.body.innerHTML = '<div id="chat-app" data-room="general"></div>';
+    localStorage.clear();
+    FakeWS.reset();
+    window.WebSocket = FakeWS;
+    window.IntersectionObserver = undefined;
+    delete window.marked;
+    delete window.DOMPurify;
+    window.XOGalaxy.chat.reset();
+  });
+
+  it("el botón de reply aparece en mensajes y abre la barra de respuesta", () => {
+    window.XOGalaxy.chat.init();
+    const ws = FakeWS.last;
+    ws.readyState = 1;
+    ws.fire("open");
+    ws.fire("message", {
+      data: JSON.stringify({
+        type: "history",
+        messages: [{ id: 1, nickname: "Ana", body: "hola", createdAt: Date.now() }],
+      }),
+    });
+
+    const btn = document.querySelector(".chat-reply-btn");
+    expect(btn).toBeTruthy();
+
+    btn.click();
+    const bar = document.querySelector(".chat-reply-bar");
+    expect(bar.hidden).toBe(false);
+    expect(bar.textContent).toContain("Ana");
+  });
+
+  it("contexto de respuesta se renderiza cuando replyTo apunta a un mensaje conocido", () => {
+    window.XOGalaxy.chat.init();
+    const ws = FakeWS.last;
+    ws.readyState = 1;
+    ws.fire("open");
+    ws.fire("message", {
+      data: JSON.stringify({
+        type: "history",
+        messages: [
+          { id: 1, nickname: "Ana", body: "primer mensaje", createdAt: 1000 },
+          { id: 2, nickname: "Beto", body: "respuesta", createdAt: 2000, replyTo: 1 },
+        ],
+      }),
+    });
+
+    const ctx = document.querySelector(".chat-reply-ctx");
+    expect(ctx).toBeTruthy();
+    expect(ctx.textContent).toContain("Ana");
+    expect(ctx.textContent).toContain("primer mensaje");
+  });
+
+  it("a profundidad 2 no se muestra el botón de reply", () => {
+    window.XOGalaxy.chat.init();
+    const ws = FakeWS.last;
+    ws.readyState = 1;
+    ws.fire("open");
+    ws.fire("message", {
+      data: JSON.stringify({
+        type: "history",
+        messages: [
+          { id: 1, nickname: "Ana", body: "A", createdAt: 1000 },
+          { id: 2, nickname: "Beto", body: "B", createdAt: 2000, replyTo: 1 },
+          { id: 3, nickname: "Cara", body: "C", createdAt: 3000, replyTo: 2 },
+        ],
+      }),
+    });
+
+    const btns = document.querySelectorAll(".chat-reply-btn");
+    expect(btns.length).toBe(2);
+    const depth3 = document.querySelector('[data-id="3"]');
+    expect(depth3.querySelector(".chat-reply-btn")).toBeNull();
+  });
+
+  it("al enviar con replyTo activo se incluye en el WS y se limpia la barra", () => {
+    window.XOGalaxy.chat.init();
+    const ws = FakeWS.last;
+    ws.readyState = 1;
+    ws.fire("open");
+    ws.fire("message", {
+      data: JSON.stringify({
+        type: "history",
+        messages: [{ id: 1, nickname: "Ana", body: "hola", createdAt: 1000 }],
+      }),
+    });
+
+    document.querySelector(".chat-reply-btn").click();
+    const bar = document.querySelector(".chat-reply-bar");
+    expect(bar.hidden).toBe(false);
+
+    const input = document.querySelector(".chat-input");
+    input.value = "mi respuesta";
+    document.querySelector(".chat-form").dispatchEvent(new Event("submit", { bubbles: true }));
+
+    expect(JSON.parse(ws.sent[0]).replyTo).toBe(1);
+    expect(bar.hidden).toBe(true);
+  });
+});
+
+describe("cargar más", () => {
+  beforeEach(() => {
+    document.body.innerHTML = '<div id="chat-app" data-room="general"></div>';
+    localStorage.clear();
+    FakeWS.reset();
+    window.WebSocket = FakeWS;
+    window.IntersectionObserver = undefined;
+    delete window.marked;
+    delete window.DOMPurify;
+    window.XOGalaxy.chat.reset();
+    mockBackend({
+      "/chat/history": () =>
+        new Response(
+          JSON.stringify({
+            messages: [
+              { id: 1, nickname: "Ana", body: "viejo 1", createdAt: 500 },
+              { id: 2, nickname: "Beto", body: "viejo 2", createdAt: 600 },
+            ],
+          }),
+          { status: 200 }
+        ),
+    });
+  });
+
+  it("aparece cuando la historia inicial tiene 50+ mensajes y carga más vía REST", async () => {
+    const msgs = Array.from({ length: 50 }, (_, i) => ({
+      id: i + 1,
+      nickname: "Ana",
+      body: "msg " + (i + 1),
+      createdAt: 1000 + i,
+    }));
+
+    window.XOGalaxy.chat.init();
+    const ws = FakeWS.last;
+    ws.readyState = 1;
+    ws.fire("open");
+    ws.fire("message", {
+      data: JSON.stringify({ type: "history", messages: msgs }),
+    });
+
+    const btn = document.querySelector(".chat-load-more-btn");
+    expect(btn).toBeTruthy();
+
+    btn.click();
+    await new Promise((r) => setTimeout(r, 0));
+
+    const all = document.querySelectorAll(".chat-msg");
+    expect(all.length).toBe(52);
+  });
+});
