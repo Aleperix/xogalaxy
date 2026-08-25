@@ -124,6 +124,8 @@ export default {
           return handleChatMessage(request, env, origin);
         case "/chat/mod/delete":
           return handleChatModDelete(request, env, origin);
+        case "/chat/mod/clear":
+          return handleChatModClear(request, env, origin);
         case "/chat/archive/days":
           return handleChatArchiveDays(request, env, origin);
         case "/chat/archive":
@@ -351,6 +353,30 @@ async function handleChatModDelete(request, env, origin) {
   const stub = env.ROOM.getByName(room);
   await stub.modDelete(room, id);
   return json({ ok: true, id }, 200, cors(origin));
+}
+
+async function handleChatModClear(request, env, origin) {
+  if (request.method !== "POST") {
+    return json({ error: "method not allowed" }, 405, cors(origin));
+  }
+  let body;
+  try {
+    body = await request.json();
+  } catch (err) {
+    return json({ error: "invalid json" }, 400, cors(origin));
+  }
+  const who = await ownerFromRequest(env, request, body);
+  if (!who) {
+    return json({ error: "unauthorized" }, 401, cors(origin));
+  }
+  const room = String(body.room || "*").slice(0, 64);
+  const targets = room === "*" ? CHAT_ROOMS : [room];
+  const results = [];
+  for (const r of targets) {
+    const stub = env.ROOM.getByName(r);
+    results.push(await stub.clearRoom(r));
+  }
+  return json({ ok: true, cleared: results }, 200, cors(origin));
 }
 
 // ---- chat archive ----

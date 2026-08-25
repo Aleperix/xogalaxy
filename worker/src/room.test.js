@@ -162,6 +162,38 @@ describe("chat HTTP", () => {
     const history = await (await exports.default.fetch("http://x.test/chat/history?room=general")).json();
     expect(history.messages).toHaveLength(0);
   });
+
+  it("mod clear exige auth y borra todos los mensajes de la sala", async () => {
+    for (const body of ["uno", "dos", "tres"]) {
+      await exports.default.fetch("http://x.test/chat/message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ room: "general", nickname: "Ana", body }),
+      });
+    }
+
+    const noAuth = await exports.default.fetch("http://x.test/chat/mod/clear", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ room: "*" }),
+    });
+    expect(noAuth.status).toBe(401);
+
+    const clear = await exports.default.fetch("http://x.test/chat/mod/clear", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer test-mod-key",
+      },
+      body: JSON.stringify({ room: "*" }),
+    });
+    expect(clear.status).toBe(200);
+    const { cleared } = await clear.json();
+    expect(cleared[0]).toMatchObject({ ok: true, room: "general", removed: 3 });
+
+    const history = await (await exports.default.fetch("http://x.test/chat/history?room=general")).json();
+    expect(history.messages).toHaveLength(0);
+  });
 });
 
 describe("chat WebSocket", () => {

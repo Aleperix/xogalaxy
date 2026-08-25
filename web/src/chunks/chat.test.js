@@ -316,4 +316,23 @@ describe("chunk chat", () => {
     expect(body.querySelector("strong").textContent).toBe("negrita");
     expect(body.innerHTML).not.toContain("onclick");
   });
+
+  it("broadcast cleared vacía la lista y limpia el badge", () => {
+    document.body.innerHTML =
+      '<a class="nav-link" href="#chat">Chat<span class="nav-badge" data-chat-badge hidden>0</span></a>' +
+      '<div id="chat-app" data-room="general"></div>';
+    window.XOGalaxy.chat.init();
+    const ws = FakeWS.last;
+    ws.readyState = 1;
+    ws.fire("open");
+
+    const badge = document.querySelector("[data-chat-badge]");
+    ws.fire("message", { data: JSON.stringify({ type: "message", message: { id: 1, nickname: "Ana", body: "hola", createdAt: 1 } }) });
+    expect(document.querySelectorAll(".chat-msg").length).toBe(1);
+    expect(badge.hasAttribute("hidden")).toBe(false);
+
+    ws.fire("message", { data: JSON.stringify({ type: "cleared", room: "general" }) });
+    expect(document.querySelectorAll(".chat-msg").length).toBe(0);
+    expect(badge.hasAttribute("hidden")).toBe(true);
+  });
 });

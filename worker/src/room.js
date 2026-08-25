@@ -247,6 +247,15 @@ export class Room extends DurableObject {
     return { ok: true, id };
   }
 
+  async clearRoom(room) {
+    const before = this.ctx.storage.sql
+      .exec("SELECT COUNT(*) AS n FROM messages WHERE room = ? AND deleted = 0", room)
+      .one();
+    this.ctx.storage.sql.exec("DELETE FROM messages WHERE room = ?", room);
+    this.broadcast(room, { type: "cleared", room });
+    return { ok: true, room, removed: before.n };
+  }
+
   broadcast(room, obj) {
     const payload = JSON.stringify(obj);
     for (const ws of this.ctx.getWebSockets(room)) {

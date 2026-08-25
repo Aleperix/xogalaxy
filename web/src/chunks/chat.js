@@ -491,6 +491,10 @@
         onIncoming(data.message);
       } else if (data.type === "deleted") {
         removeMessage(data.id);
+      } else if (data.type === "cleared") {
+        list.innerHTML = "";
+        unread = 0;
+        renderBadge();
       }
     }
 
