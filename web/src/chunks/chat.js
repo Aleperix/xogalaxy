@@ -54,8 +54,46 @@
     textInput.setAttribute("aria-label", "Mensaje");
     var sendBtn = utils.el("button", "chat-send", "Enviar");
     sendBtn.type = "submit";
+    var fmtBar = utils.el("div", "chat-fmt-bar");
+    var FMT_BUTTONS = [
+      ["**", "B", "Negrita"],
+      ["*", "I", "Itálica"],
+      ["__", "U", "Subrayado"],
+      ["~~", "S", "Tachado"],
+    ];
+    FMT_BUTTONS.forEach(function (f) {
+      var b = utils.el("button", "chat-fmt-btn");
+      b.type = "button";
+      b.title = f[2];
+      b.setAttribute("aria-label", f[2]);
+      b.textContent = f[1];
+      b.dataset.wrap = f[0];
+      fmtBar.appendChild(b);
+    });
+    fmtBar.addEventListener("click", function (e) {
+      var btn = e.target && e.target.closest ? e.target.closest(".chat-fmt-btn") : null;
+      if (!btn) return;
+      var wrap = btn.dataset.wrap || "**";
+      var start = textInput.selectionStart == null ? textInput.value.length : textInput.selectionStart;
+      var end = textInput.selectionEnd == null ? start : textInput.selectionEnd;
+      var v = textInput.value;
+      var selected = v.slice(start, end);
+      var inner = selected || "texto";
+      var replacement = wrap + inner + wrap;
+      if (v.length - (end - start) + replacement.length > 1000) return;
+      textInput.value = v.slice(0, start) + replacement + v.slice(end);
+      var cursorStart = start + wrap.length;
+      var cursorEnd = cursorStart + inner.length;
+      try {
+        textInput.setSelectionRange(cursorStart, cursorEnd);
+      } catch (err) {}
+      textInput.focus();
+    });
+    var inputWrap = utils.el("div", "chat-input-wrap");
+    inputWrap.appendChild(textInput);
+    inputWrap.appendChild(fmtBar);
     form.appendChild(nickInput);
-    form.appendChild(textInput);
+    form.appendChild(inputWrap);
     form.appendChild(sendBtn);
     root.appendChild(status);
     root.appendChild(list);
@@ -200,10 +238,6 @@
     textInput.addEventListener("blur", function () {
       global.setTimeout(closeSuggest, 120);
     });
-
-    form.appendChild(nickInput);
-    form.appendChild(textInput);
-    form.appendChild(sendBtn);
 
     var ws = null;
     var retries = 0;
