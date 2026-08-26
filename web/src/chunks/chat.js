@@ -117,7 +117,7 @@
           av.height = 20;
           opt.appendChild(av);
         }
-        opt.appendChild(utils.el("span", "chat-suggest-name")).appendChild(X.nickStyle.render(u.name));
+        opt.appendChild(utils.el("span", "chat-suggest-name")).appendChild(document.createTextNode(u.name || ""));
         opt.addEventListener("mousedown", function (e) {
           e.preventDefault();
           chooseSuggest(i);
@@ -201,75 +201,7 @@
       global.setTimeout(closeSuggest, 120);
     });
 
-    var NICK_CODES = [
-      ["0", "negro"], ["1", "azul oscuro"], ["2", "verde oscuro"], ["3", "cian oscuro"],
-      ["4", "rojo oscuro"], ["5", "violeta"], ["6", "dorado"], ["7", "gris"],
-      ["8", "gris oscuro"], ["9", "azul"], ["a", "verde"], ["b", "agua"],
-      ["c", "rojo"], ["d", "rosa"], ["e", "amarillo"], ["f", "blanco"],
-    ];
-    var NICK_FORMATS = [
-      ["l", "B", "Negrita"], ["o", "I", "Itálica"], ["n", "U", "Subrayado"],
-      ["m", "S", "Tachado"], ["r", "⭯", "Reset"],
-    ];
-    var paletteBtn = utils.el("button", "chat-nick-style");
-    paletteBtn.type = "button";
-    paletteBtn.title = "Estilos del nombre";
-    paletteBtn.setAttribute("aria-label", "Estilos del nombre");
-    paletteBtn.textContent = "A";
-    var paletteBox = utils.el("div", "nick-palette");
-    paletteBox.hidden = true;
-    var palRow = utils.el("div", "nick-palette-row");
-    NICK_CODES.forEach(function (c) {
-      var b = utils.el("button", "nick-code nick-color");
-      b.type = "button";
-      b.title = c[1];
-      b.setAttribute("aria-label", "Color " + c[1]);
-      b.style.setProperty("--swatch", X.nickStyle.COLORS[c[0]]);
-      b.dataset.code = c[0];
-      palRow.appendChild(b);
-    });
-    var fmtRow = utils.el("div", "nick-palette-row");
-    NICK_FORMATS.forEach(function (f) {
-      var b = utils.el("button", "nick-code nick-fmt");
-      b.type = "button";
-      b.title = f[2];
-      b.setAttribute("aria-label", f[2]);
-      b.textContent = f[1];
-      b.dataset.code = f[0];
-      fmtRow.appendChild(b);
-    });
-    paletteBox.appendChild(palRow);
-    paletteBox.appendChild(fmtRow);
-
-    function insertNickCode(code) {
-      var ins = "§" + code;
-      var start = nickInput.selectionStart == null ? nickInput.value.length : nickInput.selectionStart;
-      var end = nickInput.selectionEnd == null ? start : nickInput.selectionEnd;
-      var v = nickInput.value;
-      if (v.length + ins.length > 64) return;
-      nickInput.value = v.slice(0, start) + ins + v.slice(end);
-      var pos = start + ins.length;
-      try {
-        nickInput.setSelectionRange(pos, pos);
-      } catch (err) {}
-      nickInput.focus();
-    }
-
-    paletteBtn.addEventListener("click", function () {
-      paletteBox.hidden = !paletteBox.hidden;
-    });
-    paletteBox.addEventListener("click", function (e) {
-      var b = e.target && e.target.closest ? e.target.closest(".nick-code") : null;
-      if (!b) return;
-      insertNickCode(b.dataset.code);
-    });
-
-    var nickWrap = utils.el("div", "chat-nick-wrap");
-    form.removeChild(nickInput);
-    nickWrap.appendChild(nickInput);
-    nickWrap.appendChild(paletteBtn);
-    nickWrap.appendChild(paletteBox);
-    form.insertBefore(nickWrap, textInput);
+    form.appendChild(nickInput);
     form.appendChild(textInput);
     form.appendChild(sendBtn);
 
@@ -505,7 +437,7 @@
       }
       var box = utils.el("div", "chat-tip-main");
       var row = utils.el("span", "chat-tip-name");
-      row.appendChild(X.nickStyle.render(user.name));
+      row.appendChild(document.createTextNode(user.name || ""));
       row.appendChild(utils.el("i", "chat-tip-badge"));
       box.appendChild(row);
       box.appendChild(utils.el("span", "chat-tip-handle", "cuenta verificada"));
@@ -624,7 +556,7 @@
       var m = msgMap[msgId];
       if (!m) return;
       replyingTo = m;
-      replyText.textContent = "Respondiendo a " + X.nickStyle.plain((m.author && m.author.name) || m.nickname);
+      replyText.textContent = "Respondiendo a " + ((m.author && m.author.name) || m.nickname || "");
       replyBar.hidden = false;
       textInput.focus();
     }
@@ -637,6 +569,16 @@
       global.setTimeout(function () {
         el.classList.remove("chat-highlight");
       }, 1200);
+    }
+
+    function cssAvatar(type) {
+      var wrap = utils.el("span", "chat-msg-avatar " + type);
+      if (type === "chat-msg-avatar-guest") {
+        wrap.textContent = "?";
+      } else {
+        wrap.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+      }
+      return wrap;
     }
 
     function buildMsgEl(message) {
@@ -663,6 +605,10 @@
         img.height = 28;
         img.loading = "lazy";
         li.appendChild(img);
+      } else if (author && author.sub) {
+        li.appendChild(cssAvatar("chat-msg-avatar-empty"));
+      } else {
+        li.appendChild(cssAvatar("chat-msg-avatar-guest"));
       }
       var main = utils.el("div", "chat-msg-main");
       if (message.replyTo && msgMap[message.replyTo]) {
@@ -670,23 +616,23 @@
         var ctx = utils.el("div", "chat-reply-ctx");
         ctx.setAttribute("data-reply-to", String(message.replyTo));
         var ctxName = utils.el("span", "chat-reply-ctx-name");
-        ctxName.appendChild(X.nickStyle.render((parent.author && parent.author.name) || parent.nickname));
+        ctxName.appendChild(document.createTextNode((parent.author && parent.author.name) || parent.nickname || ""));
         ctx.appendChild(ctxName);
-        ctx.appendChild(utils.el("span", "chat-reply-ctx-text", X.nickStyle.plain(parent.body)));
+        ctx.appendChild(utils.el("span", "chat-reply-ctx-text", String(parent.body || "")));
         ctx.addEventListener("click", function () {
           scrollToMsg(message.replyTo);
         });
         main.appendChild(ctx);
       }
       var head = utils.el("div", "chat-msg-head");
-      var nameText = (author && author.name) || message.nickname;
+      var nameText = (author && author.name) || message.nickname || "";
       var meta;
       if (author && author.sub) {
         meta = utils.el("button", "chat-msg-meta chat-msg-user chat-msg-verified");
         meta.type = "button";
         meta.title = "Ver perfil";
-        meta.setAttribute("aria-label", "Ver perfil de " + X.nickStyle.plain(nameText));
-        meta.appendChild(X.nickStyle.render(nameText));
+        meta.setAttribute("aria-label", "Ver perfil de " + nameText);
+        meta.appendChild(document.createTextNode(nameText));
         meta.addEventListener("click", function () {
           if (X.posts && X.posts.showProfile) {
             X.posts.showProfile({ sub: author.sub, name: author.name, picture: author.picture });
@@ -694,7 +640,7 @@
         });
       } else {
         meta = utils.el("span", "chat-msg-meta");
-        meta.appendChild(X.nickStyle.render(nameText));
+        meta.appendChild(document.createTextNode(nameText));
       }
       head.appendChild(meta);
       var time = utils.el("time", "chat-msg-time", fmtTime(message.createdAt));
@@ -705,7 +651,7 @@
         var replyBtn = utils.el("button", "chat-reply-btn");
         replyBtn.type = "button";
         replyBtn.title = "Responder";
-        replyBtn.setAttribute("aria-label", "Responder a " + X.nickStyle.plain(nameText));
+        replyBtn.setAttribute("aria-label", "Responder a " + nameText);
         replyBtn.addEventListener("click", function () {
           startReply(message.id);
         });
@@ -725,6 +671,7 @@
     }
 
     function append(message) {
+      if (list.querySelector('.chat-msg[data-id="' + message.id + '"]')) return;
       var li = buildMsgEl(message);
       list.appendChild(li);
       while (list.children.length > MAX_MSGS) {
@@ -800,6 +747,10 @@
 
     function connect() {
       if (closed) return;
+      if (ws) {
+        try { ws.close(); } catch (err) {}
+        ws = null;
+      }
       var url = WS_BASE + "/chat/ws?room=" + encodeURIComponent(room) + "&nick=" + encodeURIComponent(nickname);
       var socket = null;
       try {

@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import "../core.js";
 import "../api.js";
 import "../markdown.js";
-import "../nick-style.js";
 import "./auth.js";
 import "./identity.js";
 import "./chat.js";
