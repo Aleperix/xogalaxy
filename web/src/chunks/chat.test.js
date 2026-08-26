@@ -1,25 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import "../core.js";
 import "../api.js";
-import "../markdown.js";
 import "../msg-style.js";
 import "./auth.js";
 import "./identity.js";
 import "./engagement.js";
 import "./chat.js";
-
-const VENDOR_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../vendor");
-
-function loadVendored() {
-  const code =
-    fs.readFileSync(path.join(VENDOR_DIR, "marked.min.js"), "utf8") +
-    "\n" +
-    fs.readFileSync(path.join(VENDOR_DIR, "dompurify.min.js"), "utf8");
-  new Function(code)();
-}
 
 function mockBackend(handlers) {
   vi.stubGlobal("fetch", async (url, opts) => {
@@ -72,8 +58,6 @@ describe("chunk chat", () => {
     FakeWS.reset();
     window.WebSocket = FakeWS;
     window.IntersectionObserver = undefined;
-    delete window.marked;
-    delete window.DOMPurify;
     window.XOGalaxy.chat.reset();
   });
 
@@ -128,13 +112,13 @@ describe("chunk chat", () => {
     ws.readyState = 1;
     ws.fire("open");
 
-    const input = document.querySelector(".msg-style-input");
-    input.textContent = "mensaje de prueba";
+    const input = document.querySelector(".chat-input");
+    input.value = "mensaje de prueba";
     chatApp().dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
 
     expect(ws.sent).toHaveLength(1);
     expect(JSON.parse(ws.sent[0])).toEqual({ type: "chat", body: "mensaje de prueba", token: null, replyTo: null });
-    expect(input.textContent).toBe("");
+    expect(input.value).toBe("");
   });
 
   it("cae a REST si el WS no puede conectarse", async () => {
@@ -164,8 +148,8 @@ describe("chunk chat", () => {
     await flush();
     expect(document.querySelectorAll(".chat-msg").length).toBe(1);
 
-    const input = document.querySelector(".msg-style-input");
-    input.textContent = "envío offline";
+    const input = document.querySelector(".chat-input");
+    input.value = "envío offline";
     chatApp().dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
     await flush();
 

@@ -47,18 +47,12 @@
     nickInput.placeholder = "Tu nombre";
     nickInput.value = nickname;
     nickInput.setAttribute("aria-label", "Tu nombre");
-    var textInput = utils.el("div", "msg-style-input");
-    textInput.contentEditable = "true";
-    textInput.setAttribute("role", "textbox");
+    var textInput = utils.el("textarea", "chat-input");
+    textInput.placeholder = "Escribí un mensaje…";
     textInput.setAttribute("aria-label", "Mensaje");
-    textInput.setAttribute("data-placeholder", "Escribí un mensaje…");
-    var activeStyle = { color: null, bold: false, italic: false, underline: false, strike: false };
-    function getTextContent() {
-      return (textInput.textContent || "").replace(/\u00a0/g, " ");
-    }
-    function setTextContent(v) {
-      textInput.textContent = v;
-    }
+    textInput.maxLength = 1000;
+    var previewDiv = utils.el("div", "chat-preview");
+    previewDiv.hidden = true;
     var sendBtn = utils.el("button", "chat-send", "Enviar");
     sendBtn.type = "submit";
     var paletteBtn = utils.el("button", "msg-style-btn");
@@ -101,29 +95,50 @@
     paletteBox.appendChild(fmtRow);
     paletteBox.appendChild(colorRow);
 
-    function updatePaletteActive() {
-      var codes = paletteBox.querySelectorAll(".msg-style-code");
-      for (var i = 0; i < codes.length; i++) {
-        var c = codes[i].dataset.code;
-        var isFmt = PALETTE_FMTS.some(function (f) { return f[0] === c; });
-        var isActive = false;
-        if (isFmt) {
-          if (c === "l") isActive = activeStyle.bold;
-          else if (c === "o") isActive = activeStyle.italic;
-          else if (c === "n") isActive = activeStyle.underline;
-          else if (c === "m") isActive = activeStyle.strike;
-          else if (c === "r") isActive = false;
-        } else {
-          isActive = activeStyle.color === c;
-        }
-        codes[i].classList.toggle("active", isActive);
+    function insertStyleCode(code) {
+      var start = textInput.selectionStart;
+      var end = textInput.selectionEnd;
+      var val = textInput.value;
+      var selected = val.slice(start, end);
+      if (code === "r") {
+        textInput.value = val.slice(0, start) + "\u00a7r" + val.slice(end);
+        textInput.selectionStart = textInput.selectionEnd = start + 2;
+      } else if (selected) {
+        textInput.value = val.slice(0, start) + "\u00a7" + code + selected + "\u00a7r" + val.slice(end);
+        textInput.selectionStart = start + 2;
+        textInput.selectionEnd = start + 2 + selected.length;
+      } else {
+        textInput.value = val.slice(0, start) + "\u00a7" + code + val.slice(end);
+        textInput.selectionStart = textInput.selectionEnd = start + 2;
       }
+      textInput.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+
+    function updatePreview() {
+      var raw = textInput.value;
+      if (!raw) {
+        previewDiv.hidden = true;
+        previewDiv.innerHTML = "";
+        return;
+      }
+      previewDiv.hidden = false;
+      previewDiv.innerHTML = "";
+      try {
+        previewDiv.appendChild(X.msgStyle.renderMsg(raw));
+      } catch (err) {
+        previewDiv.textContent = raw;
+      }
+    }
+
+    function autoResize() {
+      textInput.style.height = "auto";
+      var h = Math.min(textInput.scrollHeight, 120);
+      textInput.style.height = h + "px";
     }
 
     paletteBtn.addEventListener("click", function () {
       paletteBox.hidden = !paletteBox.hidden;
       if (!paletteBox.hidden) {
-        updatePaletteActive();
         var btnRect = paletteBtn.getBoundingClientRect();
         var rootRect = root.getBoundingClientRect();
         paletteBox.style.left = Math.max(8, Math.min(
@@ -137,72 +152,14 @@
     paletteBox.addEventListener("click", function (e) {
       var btn = e.target && e.target.closest ? e.target.closest(".msg-style-code") : null;
       if (!btn) return;
-      var code = btn.dataset.code;
-      var isColor = PALETTE_COLORS.some(function (c) { return c[0] === code; });
-      if (isColor) {
-        activeStyle.color = activeStyle.color === code ? null : code;
-      } else if (code === "r") {
-        activeStyle.color = null;
-        activeStyle.bold = false;
-        activeStyle.italic = false;
-        activeStyle.underline = false;
-        activeStyle.strike = false;
-      } else {
-        if (code === "l") activeStyle.bold = !activeStyle.bold;
-        else if (code === "o") activeStyle.italic = !activeStyle.italic;
-        else if (code === "n") activeStyle.underline = !activeStyle.underline;
-        else if (code === "m") activeStyle.strike = !activeStyle.strike;
-      }
-      updatePaletteActive();
-      refreshHybrid();
+      insertStyleCode(btn.dataset.code);
       textInput.focus();
     });
 
-    function applyActiveStyleToSelection() {
-      var sel = global.getSelection();
-      if (!sel || sel.rangeCount === 0) return;
-      var range = sel.getRangeAt(0);
-      var selected = range.toString();
-      if (!selected) return;
-      var md = "";
-      if (activeStyle.bold) md += "**";
-      if (activeStyle.italic) md += "*";
-      if (activeStyle.underline) md += "__";
-      if (activeStyle.strike) md += "~~";
-      if (!md) return;
-      var replacement = md + selected + md;
-      range.deleteContents();
-      range.insertNode(document.createTextNode(replacement));
-      sel.removeAllRanges();
-    }
-
-    function refreshHybrid() {
-      var raw = getTextContent();
-      textInput.innerHTML = "";
-      if (raw) {
-        textInput.appendChild(X.msgStyle.renderHybrid(raw));
-      }
-      var range = document.createRange();
-      var sel = global.getSelection();
-      range.selectNodeContents(textInput);
-      range.collapse(false);
-      sel.removeAllRanges();
-      sel.addRange(range);
-    }
-
     textInput.addEventListener("input", function () {
-      var raw = getTextContent();
-      textInput.innerHTML = "";
-      if (raw) {
-        textInput.appendChild(X.msgStyle.renderHybrid(raw));
-      }
-      var range = document.createRange();
-      var sel = global.getSelection();
-      range.selectNodeContents(textInput);
-      range.collapse(false);
-      sel.removeAllRanges();
-      sel.addRange(range);
+      updatePreview();
       checkMention();
+      autoResize();
     });
 
     textInput.addEventListener("keydown", function (e) {
@@ -233,19 +190,12 @@
       }
     });
 
-    textInput.addEventListener("paste", function (e) {
-      e.preventDefault();
-      var text = (e.clipboardData || global.clipboardData).getData("text") || "";
-      text = text.slice(0, 1000);
-      document.execCommand("insertText", false, text);
-    });
-
     textInput.addEventListener("blur", function () {
       global.setTimeout(closeSuggest, 120);
     });
 
     function checkMention() {
-      var raw = getTextContent();
+      var raw = textInput.value;
       var caret = raw.length;
       var before = raw.slice(0, caret);
       var m = before.match(/(^|\s)@([^\s@]{0,32})$/);
@@ -260,11 +210,12 @@
       }, 140);
     }
 
-    var inputWrap = utils.el("div", "msg-style-input-wrap");
+    var inputWrap = utils.el("div", "chat-input-wrap");
     inputWrap.appendChild(textInput);
     form.appendChild(nickInput);
     form.appendChild(paletteBtn);
     form.appendChild(inputWrap);
+    form.appendChild(previewDiv);
     form.appendChild(sendBtn);
     root.appendChild(paletteBox);
     root.appendChild(status);
@@ -306,7 +257,7 @@
     }
 
     function mentionQuery() {
-      var raw = getTextContent();
+      var raw = textInput.value;
       var m = raw.match(/(^|\s)@([^\s@]{0,32})$/);
       return m ? m[2] : null;
     }
@@ -345,10 +296,10 @@
         closeSuggest();
         return;
       }
-      var raw = getTextContent();
+      var raw = textInput.value;
       var newRaw = raw.replace(/@[^\s@]*$/, "@" + name + " ");
-      setTextContent(newRaw);
-      refreshHybrid();
+      textInput.value = newRaw;
+      updatePreview();
       closeSuggest();
       textInput.focus();
     }
@@ -983,19 +934,14 @@
 
     form.addEventListener("submit", function (e) {
       e.preventDefault();
-      var body = getTextContent().slice(0, 1000);
+      var body = textInput.value.slice(0, 1000);
       if (!body) return;
       var replyMsg = replyingTo;
-      setTextContent("");
-      textInput.innerHTML = "";
+      textInput.value = "";
+      updatePreview();
       closeSuggest();
       replyingTo = null;
       replyBar.hidden = true;
-      activeStyle.color = null;
-      activeStyle.bold = false;
-      activeStyle.italic = false;
-      activeStyle.underline = false;
-      activeStyle.strike = false;
       send(body, replyMsg).catch(function () {
         setStatus("no se pudo enviar — reintentá", "offline");
       });

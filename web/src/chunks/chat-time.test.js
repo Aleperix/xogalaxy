@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import "../core.js";
 import "../api.js";
-import "../markdown.js";
 import "../msg-style.js";
 import "./auth.js";
 import "./identity.js";
@@ -56,8 +55,7 @@ describe("chat timestamps y menciones", () => {
     FakeWS.reset();
     window.WebSocket = FakeWS;
     window.IntersectionObserver = undefined;
-    delete window.marked;
-    delete window.DOMPurify;
+
     window.XOGalaxy.chat.reset();
   });
 
@@ -107,8 +105,7 @@ describe("autocomplete de menciones", () => {
     FakeWS.reset();
     window.WebSocket = FakeWS;
     window.IntersectionObserver = undefined;
-    delete window.marked;
-    delete window.DOMPurify;
+
     window.XOGalaxy.chat.reset();
     mockBackend({
       "/users/suggest": (u) =>
@@ -117,14 +114,14 @@ describe("autocomplete de menciones", () => {
   });
 
   async function typeAt(input, text) {
-    input.textContent = text;
+    input.value = text;
     input.dispatchEvent(new window.Event("input", { bubbles: true }));
     await new Promise((r) => setTimeout(r, 220));
   }
 
   it("muestra sugerencias al escribir @nombre y elige con Enter", async () => {
     window.XOGalaxy.chat.init();
-    const input = document.querySelector(".msg-style-input");
+    const input = document.querySelector(".chat-input");
     const box = document.querySelector(".chat-suggest");
 
     await typeAt(input, "hola @Bo");
@@ -132,15 +129,13 @@ describe("autocomplete de menciones", () => {
     expect(box.querySelectorAll(".chat-suggest-item")).toHaveLength(1);
 
     input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
-    // inserta el primer segmento del nombre (las menciones no tienen espacios;
-    // la resolución por prefijo en el backend encuentra a "Bob García")
-    expect(input.textContent).toBe("hola @Bob ");
+    expect(input.value).toBe("hola @Bob ");
     expect(box.hidden).toBe(true);
   });
 
   it("cierra el popup con Escape y no abre con menos de 2 caracteres", async () => {
     window.XOGalaxy.chat.init();
-    const input = document.querySelector(".msg-style-input");
+    const input = document.querySelector(".chat-input");
     const box = document.querySelector(".chat-suggest");
 
     await typeAt(input, "@B");
@@ -156,22 +151,22 @@ describe("autocomplete de menciones", () => {
   it("Enter en el popup no envía el mensaje", async () => {
     window.XOGalaxy.chat.init();
     const form = document.querySelector(".chat-form");
-    const input = document.querySelector(".msg-style-input");
+    const input = document.querySelector(".chat-input");
     const sent = [];
     form.addEventListener("submit", (e) => e.preventDefault());
 
     await typeAt(input, "@Bo");
-    const before = input.textContent;
+    const before = input.value;
     input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
 
-    expect(input.textContent.startsWith("@Bob ")).toBe(true);
+    expect(input.value.startsWith("@Bob ")).toBe(true);
     expect(sent).toHaveLength(0);
     void before;
   });
 
   it("la barra arranca oculta y sigue oculta tras elegir la mención", async () => {
     window.XOGalaxy.chat.init();
-    const input = document.querySelector(".msg-style-input");
+    const input = document.querySelector(".chat-input");
     const box = document.querySelector(".chat-suggest");
     expect(box.hidden).toBe(true);
 
@@ -195,8 +190,7 @@ describe("tooltip de menciones", () => {
     FakeWS.reset();
     window.WebSocket = FakeWS;
     window.IntersectionObserver = undefined;
-    delete window.marked;
-    delete window.DOMPurify;
+
     window.XOGalaxy.chat.reset();
     mockBackend({
       "/users/suggest": (u) =>
@@ -246,8 +240,7 @@ describe("respuestas anidadas", () => {
     FakeWS.reset();
     window.WebSocket = FakeWS;
     window.IntersectionObserver = undefined;
-    delete window.marked;
-    delete window.DOMPurify;
+
     window.XOGalaxy.chat.reset();
   });
 
@@ -331,8 +324,8 @@ describe("respuestas anidadas", () => {
     const bar = document.querySelector(".chat-reply-bar");
     expect(bar.hidden).toBe(false);
 
-    const input = document.querySelector(".msg-style-input");
-    input.textContent = "mi respuesta";
+    const input = document.querySelector(".chat-input");
+    input.value = "mi respuesta";
     document.querySelector(".chat-form").dispatchEvent(new Event("submit", { bubbles: true }));
 
     expect(JSON.parse(ws.sent[0]).replyTo).toBe(1);
@@ -347,8 +340,7 @@ describe("cargar más", () => {
     FakeWS.reset();
     window.WebSocket = FakeWS;
     window.IntersectionObserver = undefined;
-    delete window.marked;
-    delete window.DOMPurify;
+
     window.XOGalaxy.chat.reset();
     mockBackend({
       "/chat/history": () =>

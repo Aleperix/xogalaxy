@@ -1,9 +1,7 @@
 /**
  * XO Galaxy — estilos de mensajes del chat.
- * renderMsg(raw): renderiza body del mensaje con colores y formatos vía clases CSS.
- * renderHybrid(text): genera HTML híbrido para el contenteditable (texto formateado + sintaxis fantasma).
+ * renderMsg(raw): renderiza body del mensaje con colores y formatos via clases CSS.
  * Colores: msg-c0 a msg-cf. Formatos: msg-bold, msg-italic, msg-underline, msg-strike.
- * Usamos clases CSS en vez de style inline para que DOMPurify las preserve.
  */
 (function (global) {
   "use strict";
@@ -44,10 +42,6 @@
   var MAX_MSG_LEN = 1000;
   var MAX_SPANS = 48;
 
-  function classesFromClass(classStr) {
-    return classStr ? classStr.split(/\s+/) : [];
-  }
-
   function buildSpan(classes, text) {
     var s = global.document.createElement("span");
     if (classes.length) s.className = classes.join(" ");
@@ -60,7 +54,6 @@
     var frag = doc.createDocumentFragment();
     var text = String(raw == null ? "" : raw).slice(0, MAX_MSG_LEN);
     var re = /\u00a7([0-9a-fk-or])/gi;
-    var activeClasses = [];
     var colorClass = null;
     var bold = false;
     var italic = false;
@@ -76,7 +69,11 @@
         buf = "";
         return;
       }
-      var cls = activeClasses.slice();
+      var cls = [];
+      if (bold) cls.push("msg-bold");
+      if (italic) cls.push("msg-italic");
+      if (underline) cls.push("msg-underline");
+      if (strike) cls.push("msg-strike");
       if (colorClass) cls.push(colorClass);
       frag.appendChild(buildSpan(cls, buf));
       spans += 1;
@@ -96,18 +93,12 @@
         else if (fc === "msg-italic") italic = true;
         else if (fc === "msg-underline") underline = true;
         else if (fc === "msg-strike") strike = true;
-        activeClasses = [];
-        if (bold) activeClasses.push("msg-bold");
-        if (italic) activeClasses.push("msg-italic");
-        if (underline) activeClasses.push("msg-underline");
-        if (strike) activeClasses.push("msg-strike");
       } else if (code === "r") {
         colorClass = null;
         bold = false;
         italic = false;
         underline = false;
         strike = false;
-        activeClasses = [];
       }
     }
     buf += text.slice(idx);
@@ -115,67 +106,8 @@
     return frag;
   }
 
-  var MD_RE = /(\*\*[^*]+\*\*|\*[^*]+\*|__[^_]+__|~~[^~]+~~)/g;
-
-  function renderHybrid(text) {
-    var doc = global.document;
-    var frag = doc.createDocumentFragment();
-    var raw = String(text == null ? "" : text);
-    var lastIdx = 0;
-    var m;
-
-    MD_RE.lastIndex = 0;
-    while ((m = MD_RE.exec(raw)) !== null) {
-      if (m.index > lastIdx) {
-        frag.appendChild(doc.createTextNode(raw.slice(lastIdx, m.index)));
-      }
-      var token = m[0];
-      var inner = token.slice(2, -2);
-      var cls = [];
-      if (token.charAt(0) === "*" && token.charAt(1) === "*") {
-        cls.push("msg-bold");
-      } else if (token.charAt(0) === "*" && token.charAt(1) !== "*") {
-        cls.push("msg-italic");
-      } else if (token.charAt(0) === "_" && token.charAt(1) === "_") {
-        cls.push("msg-underline");
-      } else if (token.charAt(0) === "~" && token.charAt(1) === "~") {
-        cls.push("msg-strike");
-      }
-      var open = buildSpan(["msg-syntax"], token.slice(0, 2));
-      var content = buildSpan(cls, inner);
-      var close = buildSpan(["msg-syntax"], token.slice(-2));
-      var wrap = doc.createElement("span");
-      wrap.appendChild(open);
-      wrap.appendChild(content);
-      wrap.appendChild(close);
-      frag.appendChild(wrap);
-      lastIdx = m.index + token.length;
-    }
-    if (lastIdx < raw.length) {
-      frag.appendChild(doc.createTextNode(raw.slice(lastIdx)));
-    }
-    return frag;
-  }
-
-  function stripMd(text) {
-    return String(text == null ? "" : text)
-      .replace(/\*\*([^*]+)\*\*/g, "$1")
-      .replace(/\*([^*]+)\*/g, "$1")
-      .replace(/__([^_]+)__/g, "$1")
-      .replace(/~~([^~]+)~~/g, "$1")
-      .slice(0, MAX_MSG_LEN);
-  }
-
-  function getActiveMarkdown(code) {
-    var map = { l: "**", o: "*", n: "__", m: "~~" };
-    return map[code] || "";
-  }
-
   X.msgStyle = {
     renderMsg: renderMsg,
-    renderHybrid: renderHybrid,
-    stripMd: stripMd,
-    getActiveMarkdown: getActiveMarkdown,
     COLORS: COLORS,
     COLOR_CLASSES: COLOR_CLASSES,
     FORMAT_CLASSES: FORMAT_CLASSES,
