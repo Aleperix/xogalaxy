@@ -47,54 +47,226 @@
     nickInput.placeholder = "Tu nombre";
     nickInput.value = nickname;
     nickInput.setAttribute("aria-label", "Tu nombre");
-    var textInput = utils.el("input", "chat-input");
-    textInput.maxLength = 1000;
-    textInput.placeholder = "Escribí un mensaje…";
-    textInput.autocomplete = "off";
+    var textInput = utils.el("div", "msg-style-input");
+    textInput.contentEditable = "true";
+    textInput.setAttribute("role", "textbox");
     textInput.setAttribute("aria-label", "Mensaje");
+    textInput.setAttribute("data-placeholder", "Escribí un mensaje…");
+    var activeStyle = { color: null, bold: false, italic: false, underline: false, strike: false };
+    function getTextContent() {
+      return (textInput.textContent || "").replace(/\u00a0/g, " ");
+    }
+    function setTextContent(v) {
+      textInput.textContent = v;
+    }
     var sendBtn = utils.el("button", "chat-send", "Enviar");
     sendBtn.type = "submit";
-    var fmtBar = utils.el("div", "chat-fmt-bar");
-    var FMT_BUTTONS = [
-      ["**", "B", "Negrita"],
-      ["*", "I", "Itálica"],
-      ["__", "U", "Subrayado"],
-      ["~~", "S", "Tachado"],
+    var paletteBtn = utils.el("button", "msg-style-btn");
+    paletteBtn.type = "button";
+    paletteBtn.title = "Estilos del mensaje";
+    paletteBtn.setAttribute("aria-label", "Estilos del mensaje");
+    paletteBtn.textContent = "A";
+    var paletteBox = utils.el("div", "msg-style-palette");
+    paletteBox.hidden = true;
+    var fmtRow = utils.el("div", "msg-style-palette-row");
+    var PALETTE_FMTS = [
+      ["l", "B", "Negrita"], ["o", "I", "Itálica"], ["n", "U", "Subrayado"],
+      ["m", "S", "Tachado"], ["r", "\u21b5", "Reset"],
     ];
-    FMT_BUTTONS.forEach(function (f) {
-      var b = utils.el("button", "chat-fmt-btn");
+    PALETTE_FMTS.forEach(function (f) {
+      var b = utils.el("button", "msg-style-code msg-fmt");
       b.type = "button";
       b.title = f[2];
       b.setAttribute("aria-label", f[2]);
       b.textContent = f[1];
-      b.dataset.wrap = f[0];
-      fmtBar.appendChild(b);
+      b.dataset.code = f[0];
+      fmtRow.appendChild(b);
     });
-    fmtBar.addEventListener("click", function (e) {
-      var btn = e.target && e.target.closest ? e.target.closest(".chat-fmt-btn") : null;
+    var colorRow = utils.el("div", "msg-style-palette-row");
+    var PALETTE_COLORS = [
+      ["0", "negro"], ["1", "azul oscuro"], ["2", "verde oscuro"], ["3", "cian oscuro"],
+      ["4", "rojo oscuro"], ["5", "violeta"], ["6", "dorado"], ["7", "gris"],
+      ["8", "gris oscuro"], ["9", "azul"], ["a", "verde"], ["b", "agua"],
+      ["c", "rojo"], ["d", "rosa"], ["e", "amarillo"], ["f", "blanco"],
+    ];
+    PALETTE_COLORS.forEach(function (c) {
+      var b = utils.el("button", "msg-style-code msg-color");
+      b.type = "button";
+      b.title = c[1];
+      b.setAttribute("aria-label", "Color " + c[1]);
+      b.style.setProperty("--swatch", X.msgStyle.COLORS[c[0]]);
+      b.dataset.code = c[0];
+      colorRow.appendChild(b);
+    });
+    paletteBox.appendChild(fmtRow);
+    paletteBox.appendChild(colorRow);
+
+    function updatePaletteActive() {
+      var codes = paletteBox.querySelectorAll(".msg-style-code");
+      for (var i = 0; i < codes.length; i++) {
+        var c = codes[i].dataset.code;
+        var isFmt = PALETTE_FMTS.some(function (f) { return f[0] === c; });
+        var isActive = false;
+        if (isFmt) {
+          if (c === "l") isActive = activeStyle.bold;
+          else if (c === "o") isActive = activeStyle.italic;
+          else if (c === "n") isActive = activeStyle.underline;
+          else if (c === "m") isActive = activeStyle.strike;
+          else if (c === "r") isActive = false;
+        } else {
+          isActive = activeStyle.color === c;
+        }
+        codes[i].classList.toggle("active", isActive);
+      }
+    }
+
+    paletteBtn.addEventListener("click", function () {
+      paletteBox.hidden = !paletteBox.hidden;
+      if (!paletteBox.hidden) {
+        updatePaletteActive();
+        var btnRect = paletteBtn.getBoundingClientRect();
+        var rootRect = root.getBoundingClientRect();
+        paletteBox.style.left = Math.max(8, Math.min(
+          btnRect.left - rootRect.left - 80,
+          rootRect.width - 200
+        )) + "px";
+        paletteBox.style.bottom = (rootRect.bottom - btnRect.top + 6) + "px";
+      }
+    });
+
+    paletteBox.addEventListener("click", function (e) {
+      var btn = e.target && e.target.closest ? e.target.closest(".msg-style-code") : null;
       if (!btn) return;
-      var wrap = btn.dataset.wrap || "**";
-      var start = textInput.selectionStart == null ? textInput.value.length : textInput.selectionStart;
-      var end = textInput.selectionEnd == null ? start : textInput.selectionEnd;
-      var v = textInput.value;
-      var selected = v.slice(start, end);
-      var inner = selected || "texto";
-      var replacement = wrap + inner + wrap;
-      if (v.length - (end - start) + replacement.length > 1000) return;
-      textInput.value = v.slice(0, start) + replacement + v.slice(end);
-      var cursorStart = start + wrap.length;
-      var cursorEnd = cursorStart + inner.length;
-      try {
-        textInput.setSelectionRange(cursorStart, cursorEnd);
-      } catch (err) {}
+      var code = btn.dataset.code;
+      var isColor = PALETTE_COLORS.some(function (c) { return c[0] === code; });
+      if (isColor) {
+        activeStyle.color = activeStyle.color === code ? null : code;
+      } else if (code === "r") {
+        activeStyle.color = null;
+        activeStyle.bold = false;
+        activeStyle.italic = false;
+        activeStyle.underline = false;
+        activeStyle.strike = false;
+      } else {
+        if (code === "l") activeStyle.bold = !activeStyle.bold;
+        else if (code === "o") activeStyle.italic = !activeStyle.italic;
+        else if (code === "n") activeStyle.underline = !activeStyle.underline;
+        else if (code === "m") activeStyle.strike = !activeStyle.strike;
+      }
+      updatePaletteActive();
+      refreshHybrid();
       textInput.focus();
     });
-    var inputWrap = utils.el("div", "chat-input-wrap");
+
+    function applyActiveStyleToSelection() {
+      var sel = global.getSelection();
+      if (!sel || sel.rangeCount === 0) return;
+      var range = sel.getRangeAt(0);
+      var selected = range.toString();
+      if (!selected) return;
+      var md = "";
+      if (activeStyle.bold) md += "**";
+      if (activeStyle.italic) md += "*";
+      if (activeStyle.underline) md += "__";
+      if (activeStyle.strike) md += "~~";
+      if (!md) return;
+      var replacement = md + selected + md;
+      range.deleteContents();
+      range.insertNode(document.createTextNode(replacement));
+      sel.removeAllRanges();
+    }
+
+    function refreshHybrid() {
+      var raw = getTextContent();
+      textInput.innerHTML = "";
+      if (raw) {
+        textInput.appendChild(X.msgStyle.renderHybrid(raw));
+      }
+      var range = document.createRange();
+      var sel = global.getSelection();
+      range.selectNodeContents(textInput);
+      range.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+
+    textInput.addEventListener("input", function () {
+      var raw = getTextContent();
+      textInput.innerHTML = "";
+      if (raw) {
+        textInput.appendChild(X.msgStyle.renderHybrid(raw));
+      }
+      var range = document.createRange();
+      var sel = global.getSelection();
+      range.selectNodeContents(textInput);
+      range.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(range);
+      checkMention();
+    });
+
+    textInput.addEventListener("keydown", function (e) {
+      if (sug.open) {
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          sug.index = (sug.index + 1) % sug.items.length;
+          renderSuggest();
+          return;
+        } else if (e.key === "ArrowUp") {
+          e.preventDefault();
+          sug.index = (sug.index - 1 + sug.items.length) % sug.items.length;
+          renderSuggest();
+          return;
+        } else if (e.key === "Enter" || e.key === "Tab") {
+          e.preventDefault();
+          chooseSuggest(sug.index);
+          return;
+        } else if (e.key === "Escape") {
+          e.preventDefault();
+          closeSuggest();
+          return;
+        }
+      }
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        form.dispatchEvent(new Event("submit", { bubbles: true }));
+      }
+    });
+
+    textInput.addEventListener("paste", function (e) {
+      e.preventDefault();
+      var text = (e.clipboardData || global.clipboardData).getData("text") || "";
+      text = text.slice(0, 1000);
+      document.execCommand("insertText", false, text);
+    });
+
+    textInput.addEventListener("blur", function () {
+      global.setTimeout(closeSuggest, 120);
+    });
+
+    function checkMention() {
+      var raw = getTextContent();
+      var caret = raw.length;
+      var before = raw.slice(0, caret);
+      var m = before.match(/(^|\s)@([^\s@]{0,32})$/);
+      if (!m || m[2].length < 2) {
+        closeSuggest();
+        return;
+      }
+      if (sug.timer) global.clearTimeout(sug.timer);
+      sug.timer = global.setTimeout(function () {
+        sug.timer = null;
+        fetchSuggest(m[2]);
+      }, 140);
+    }
+
+    var inputWrap = utils.el("div", "msg-style-input-wrap");
     inputWrap.appendChild(textInput);
-    inputWrap.appendChild(fmtBar);
     form.appendChild(nickInput);
+    form.appendChild(paletteBtn);
     form.appendChild(inputWrap);
     form.appendChild(sendBtn);
+    root.appendChild(paletteBox);
     root.appendChild(status);
     root.appendChild(list);
     root.appendChild(form);
@@ -134,9 +306,8 @@
     }
 
     function mentionQuery() {
-      var caret = textInput.selectionStart == null ? textInput.value.length : textInput.selectionStart;
-      var before = textInput.value.slice(0, caret);
-      var m = before.match(/(^|\s)@([^\s@]{0,32})$/);
+      var raw = getTextContent();
+      var m = raw.match(/(^|\s)@([^\s@]{0,32})$/);
       return m ? m[2] : null;
     }
 
@@ -174,13 +345,10 @@
         closeSuggest();
         return;
       }
-      var caret = textInput.selectionStart == null ? textInput.value.length : textInput.selectionStart;
-      var before = textInput.value.slice(0, caret).replace(/@[^\s@]*$/, "@" + name + " ");
-      textInput.value = before + textInput.value.slice(caret);
-      var pos = before.length;
-      try {
-        textInput.setSelectionRange(pos, pos);
-      } catch (err) {}
+      var raw = getTextContent();
+      var newRaw = raw.replace(/@[^\s@]*$/, "@" + name + " ");
+      setTextContent(newRaw);
+      refreshHybrid();
       closeSuggest();
       textInput.focus();
     }
@@ -203,41 +371,6 @@
         .catch(function () {});
     }
 
-    textInput.addEventListener("input", function () {
-      var q = mentionQuery();
-      if (q === null || q.length < 2) {
-        closeSuggest();
-        return;
-      }
-      if (sug.timer) global.clearTimeout(sug.timer);
-      sug.timer = global.setTimeout(function () {
-        sug.timer = null;
-        fetchSuggest(q);
-      }, 140);
-    });
-
-    textInput.addEventListener("keydown", function (e) {
-      if (!sug.open) return;
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        sug.index = (sug.index + 1) % sug.items.length;
-        renderSuggest();
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        sug.index = (sug.index - 1 + sug.items.length) % sug.items.length;
-        renderSuggest();
-      } else if (e.key === "Enter" || e.key === "Tab") {
-        e.preventDefault();
-        chooseSuggest(sug.index);
-      } else if (e.key === "Escape") {
-        e.preventDefault();
-        closeSuggest();
-      }
-    });
-
-    textInput.addEventListener("blur", function () {
-      global.setTimeout(closeSuggest, 120);
-    });
 
     var ws = null;
     var retries = 0;
@@ -694,7 +827,7 @@
       main.appendChild(head);
       var body = utils.el("span", "chat-msg-body");
       try {
-        body.innerHTML = X.markdown.render(message.body, { sanitize: true });
+        body.appendChild(X.msgStyle.renderMsg(message.body));
       } catch (err) {
         body.textContent = message.body;
       }
@@ -850,13 +983,19 @@
 
     form.addEventListener("submit", function (e) {
       e.preventDefault();
-      var body = textInput.value.trim().slice(0, 1000);
+      var body = getTextContent().slice(0, 1000);
       if (!body) return;
       var replyMsg = replyingTo;
-      textInput.value = "";
+      setTextContent("");
+      textInput.innerHTML = "";
       closeSuggest();
       replyingTo = null;
       replyBar.hidden = true;
+      activeStyle.color = null;
+      activeStyle.bold = false;
+      activeStyle.italic = false;
+      activeStyle.underline = false;
+      activeStyle.strike = false;
       send(body, replyMsg).catch(function () {
         setStatus("no se pudo enviar — reintentá", "offline");
       });

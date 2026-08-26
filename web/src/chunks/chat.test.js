@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import "../core.js";
 import "../api.js";
 import "../markdown.js";
-import "../nick-style.js";
+import "../msg-style.js";
 import "./auth.js";
 import "./identity.js";
 import "./engagement.js";
@@ -128,13 +128,13 @@ describe("chunk chat", () => {
     ws.readyState = 1;
     ws.fire("open");
 
-    const input = document.querySelector(".chat-input");
-    input.value = "mensaje de prueba";
+    const input = document.querySelector(".msg-style-input");
+    input.textContent = "mensaje de prueba";
     chatApp().dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
 
     expect(ws.sent).toHaveLength(1);
     expect(JSON.parse(ws.sent[0])).toEqual({ type: "chat", body: "mensaje de prueba", token: null, replyTo: null });
-    expect(input.value).toBe("");
+    expect(input.textContent).toBe("");
   });
 
   it("cae a REST si el WS no puede conectarse", async () => {
@@ -164,8 +164,8 @@ describe("chunk chat", () => {
     await flush();
     expect(document.querySelectorAll(".chat-msg").length).toBe(1);
 
-    const input = document.querySelector(".chat-input");
-    input.value = "envío offline";
+    const input = document.querySelector(".msg-style-input");
+    input.textContent = "envío offline";
     chatApp().dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
     await flush();
 
@@ -303,19 +303,19 @@ describe("chunk chat", () => {
     expect(badge.hasAttribute("hidden")).toBe(true);
   });
 
-  it("renderiza markdown sanitizado en el cuerpo del mensaje", () => {
-    loadVendored();
+  it("renderiza estilos de mensaje con clases CSS", () => {
     window.XOGalaxy.chat.init();
     const ws = FakeWS.last;
     ws.readyState = 1;
     ws.fire("message", {
       data: JSON.stringify({ type: "history", messages: [
-        { id: 1, nickname: "Ana", body: "**negrita** y <img src=x onclick=alert(1)>", createdAt: 1 },
+        { id: 1, nickname: "Ana", body: "\u00a7lNegrita\u00a7r y \u00a7cRojo", createdAt: 1 },
       ] }),
     });
     const body = document.querySelector(".chat-msg-body");
-    expect(body.querySelector("strong").textContent).toBe("negrita");
-    expect(body.innerHTML).not.toContain("onclick");
+    expect(body.querySelector(".msg-bold").textContent).toBe("Negrita");
+    expect(body.querySelector(".msg-cc").textContent).toBe("Rojo");
+    expect(body.innerHTML).not.toContain("<img");
   });
 
   it("broadcast cleared vacía la lista y limpia el badge", () => {
