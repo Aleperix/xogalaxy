@@ -114,7 +114,7 @@ describe("autocomplete de menciones", () => {
   });
 
   async function typeAt(input, text) {
-    input.value = text;
+    input.textContent = text;
     input.dispatchEvent(new window.Event("input", { bubbles: true }));
     await new Promise((r) => setTimeout(r, 220));
   }
@@ -129,7 +129,7 @@ describe("autocomplete de menciones", () => {
     expect(box.querySelectorAll(".chat-suggest-item")).toHaveLength(1);
 
     input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
-    expect(input.value).toBe("hola @Bob ");
+    expect(input.textContent).toBe("hola @Bob ");
     expect(box.hidden).toBe(true);
   });
 
@@ -156,10 +156,10 @@ describe("autocomplete de menciones", () => {
     form.addEventListener("submit", (e) => e.preventDefault());
 
     await typeAt(input, "@Bo");
-    const before = input.value;
+    const before = input.textContent;
     input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
 
-    expect(input.value.startsWith("@Bob ")).toBe(true);
+    expect(input.textContent.startsWith("@Bob ")).toBe(true);
     expect(sent).toHaveLength(0);
     void before;
   });
@@ -325,7 +325,8 @@ describe("respuestas anidadas", () => {
     expect(bar.hidden).toBe(false);
 
     const input = document.querySelector(".chat-input");
-    input.value = "mi respuesta";
+    input.textContent = "mi respuesta";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
     document.querySelector(".chat-form").dispatchEvent(new Event("submit", { bubbles: true }));
 
     expect(JSON.parse(ws.sent[0]).replyTo).toBe(1);

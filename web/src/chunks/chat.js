@@ -47,12 +47,12 @@
     nickInput.placeholder = "Tu nombre";
     nickInput.value = nickname;
     nickInput.setAttribute("aria-label", "Tu nombre");
-    var textInput = utils.el("textarea", "chat-input");
-    textInput.placeholder = "Escribí un mensaje…";
+    var textInput = utils.el("div", "chat-input");
+    textInput.contentEditable = "true";
+    textInput.setAttribute("role", "textbox");
     textInput.setAttribute("aria-label", "Mensaje");
-    textInput.maxLength = 1000;
-    var previewDiv = utils.el("div", "chat-preview");
-    previewDiv.hidden = true;
+    textInput.setAttribute("data-placeholder", "Escribí un mensaje…");
+    var rawText = "";
     var sendBtn = utils.el("button", "chat-send", "Enviar");
     sendBtn.type = "submit";
     var paletteBtn = utils.el("button", "msg-style-btn");
@@ -95,48 +95,146 @@
     paletteBox.appendChild(fmtRow);
     paletteBox.appendChild(colorRow);
 
+    function extractRaw(el) {
+      var r = "";
+      var nodes = el.childNodes;
+      for (var i = 0; i < nodes.length; i++) {
+        var n = nodes[i];
+        if (n.nodeType === 3) { r += n.textContent; continue; }
+        if (n.nodeType !== 1) continue;
+        var codes = [];
+        if (n.classList.contains("msg-bold")) codes.push("l");
+        if (n.classList.contains("msg-italic")) codes.push("o");
+        if (n.classList.contains("msg-underline")) codes.push("n");
+        if (n.classList.contains("msg-strike")) codes.push("m");
+        for (var j = 0; j < n.classList.length; j++) {
+          var cl = n.classList[j];
+          if (/^msg-c[0-9a-f]$/.test(cl)) codes.push(cl.charAt(4));
+        }
+        var open = codes.length ? codes.map(function (c) { return "\u00a7" + c; }).join("") : "";
+        var close = codes.length ? "\u00a7r" : "";
+        r += open + extractRaw(n) + close;
+      }
+      return r;
+    }
+
+    function rerenderInput() {
+      textInput.innerHTML = "";
+      if (rawText) {
+        textInput.appendChild(X.msgStyle.renderMsg(rawText));
+      }
+    }
+
+    function getPlainLength(el) {
+      var len = 0;
+      var nodes = el.childNodes;
+      for (var i = 0; i < nodes.length; i++) {
+        var n = nodes[i];
+        if (n.nodeType === 3) { len += n.textContent.length; }
+        else if (n.nodeType === 1) { len += getPlainLength(n); }
+      }
+      return len;
+    }
+
+    function saveCursor() {
+      var sel = global.getSelection();
+      if (!sel || sel.rangeCount === 0) return getPlainLength(textInput);
+      var range = sel.getRangeAt(0);
+      if (range.startContainer === textInput && range.startOffset === 0 && range.collapsed) {
+        return 0;
+      }
+      var preRange = document.createRange();
+      preRange.selectNodeContents(textInput);
+      preRange.setEnd(range.startContainer, range.startOffset);
+      return preRange.toString().length;
+    }
+
+    function restoreCursor(plainOffset) {
+      var sel = global.getSelection();
+      var range = document.createRange();
+      var remaining = plainOffset;
+      var nodes = textInput.childNodes;
+      for (var i = 0; i < nodes.length; i++) {
+        var n = nodes[i];
+        var nodeLen = n.nodeType === 3 ? n.textContent.length : (n.nodeType === 1 ? getPlainLength(n) : 0);
+        if (remaining <= nodeLen) {
+          if (n.nodeType === 3) {
+            range.setStart(n, remaining);
+          } else if (n.nodeType === 1) {
+            restoreCursorInNode(n, remaining, range);
+          } else {
+            range.selectNodeContents(textInput);
+            range.collapse(false);
+          }
+          range.collapse(true);
+          sel.removeAllRanges();
+          sel.addRange(range);
+          return;
+        }
+        remaining -= nodeLen;
+      }
+      range.selectNodeContents(textInput);
+      range.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+
+    function restoreCursorInNode(el, offset, range) {
+      var remaining = offset;
+      var nodes = el.childNodes;
+      for (var i = 0; i < nodes.length; i++) {
+        var n = nodes[i];
+        var nodeLen = n.nodeType === 3 ? n.textContent.length : (n.nodeType === 1 ? getPlainLength(n) : 0);
+        if (remaining <= nodeLen) {
+          if (n.nodeType === 3) { range.setStart(n, remaining); }
+          else if (n.nodeType === 1) { restoreCursorInNode(n, remaining, range); }
+          else { range.selectNodeContents(el); range.collapse(false); }
+          return;
+        }
+        remaining -= nodeLen;
+      }
+      range.selectNodeContents(el);
+      range.collapse(false);
+    }
+
     function insertStyleCode(code) {
-      var start = textInput.selectionStart;
-      var end = textInput.selectionEnd;
-      var val = textInput.value;
-      var selected = val.slice(start, end);
+      var sel = global.getSelection();
+      var selected = "";
+      if (sel && sel.rangeCount > 0) {
+        selected = sel.getRangeAt(0).toString();
+      }
       if (code === "r") {
-        textInput.value = val.slice(0, start) + "\u00a7r" + val.slice(end);
-        textInput.selectionStart = textInput.selectionEnd = start + 2;
+        var cursor = saveCursor();
+        rawText = rawText.slice(0, cursor) + "\u00a7r" + rawText.slice(cursor);
+        rerenderInput();
+        restoreCursor(cursor + 2);
       } else if (selected) {
-        textInput.value = val.slice(0, start) + "\u00a7" + code + selected + "\u00a7r" + val.slice(end);
-        textInput.selectionStart = start + 2;
-        textInput.selectionEnd = start + 2 + selected.length;
+        var cursorStart = saveCursor();
+        var cursorEnd = cursorStart + selected.length;
+        var rawStart = plainToRaw(cursorStart, rawText);
+        var rawEnd = plainToRaw(cursorEnd, rawText);
+        rawText = rawText.slice(0, rawStart) + "\u00a7" + code + selected + "\u00a7r" + rawText.slice(rawEnd);
+        rerenderInput();
+        restoreCursor(cursorStart + 2 + selected.length);
       } else {
-        textInput.value = val.slice(0, start) + "\u00a7" + code + val.slice(end);
-        textInput.selectionStart = textInput.selectionEnd = start + 2;
-      }
-      textInput.dispatchEvent(new Event("input", { bubbles: true }));
-    }
-
-    function updatePreview() {
-      var raw = textInput.value;
-      if (!raw) {
-        previewDiv.hidden = true;
-        previewDiv.innerHTML = "";
-        return;
-      }
-      previewDiv.hidden = false;
-      previewDiv.innerHTML = "";
-      try {
-        previewDiv.appendChild(X.msgStyle.renderMsg(raw));
-      } catch (err) {
-        previewDiv.textContent = raw;
+        var cursor = saveCursor();
+        var rawPos = plainToRaw(cursor, rawText);
+        rawText = rawText.slice(0, rawPos) + "\u00a7" + code + rawText.slice(rawPos);
+        rerenderInput();
+        restoreCursor(cursor + 2);
       }
     }
 
-    function autoResize() {
-      textInput.style.height = "auto";
-      var h = Math.min(textInput.scrollHeight, 120);
-      textInput.style.height = h + "px";
+    function plainToRaw(plainPos, raw) {
+      var p = 0;
+      var r = 0;
+      while (r < raw.length && p < plainPos) {
+        if (raw.charCodeAt(r) === 0xa7) { r += 2; } else { p++; r++; }
+      }
+      return r;
     }
 
-    paletteBtn.addEventListener("click", function () {
+    function paletteBtnClick() {
       paletteBox.hidden = !paletteBox.hidden;
       if (!paletteBox.hidden) {
         var btnRect = paletteBtn.getBoundingClientRect();
@@ -147,19 +245,20 @@
         )) + "px";
         paletteBox.style.bottom = (rootRect.bottom - btnRect.top + 6) + "px";
       }
-    });
+    }
+
+    paletteBtn.addEventListener("click", paletteBtnClick);
 
     paletteBox.addEventListener("click", function (e) {
       var btn = e.target && e.target.closest ? e.target.closest(".msg-style-code") : null;
       if (!btn) return;
-      insertStyleCode(btn.dataset.code);
       textInput.focus();
+      insertStyleCode(btn.dataset.code);
     });
 
     textInput.addEventListener("input", function () {
-      updatePreview();
+      rawText = extractRaw(textInput);
       checkMention();
-      autoResize();
     });
 
     textInput.addEventListener("keydown", function (e) {
@@ -184,10 +283,16 @@
           return;
         }
       }
-      if (e.key === "Enter" && !e.shiftKey) {
+      if (e.key === "Enter") {
         e.preventDefault();
         form.dispatchEvent(new Event("submit", { bubbles: true }));
       }
+    });
+
+    textInput.addEventListener("paste", function (e) {
+      e.preventDefault();
+      var text = (e.clipboardData || global.clipboardData).getData("text") || "";
+      document.execCommand("insertText", false, text.slice(0, 1000));
     });
 
     textInput.addEventListener("blur", function () {
@@ -195,10 +300,7 @@
     });
 
     function checkMention() {
-      var raw = textInput.value;
-      var caret = raw.length;
-      var before = raw.slice(0, caret);
-      var m = before.match(/(^|\s)@([^\s@]{0,32})$/);
+      var m = rawText.match(/(^|\s)@([^\s@]{0,32})$/);
       if (!m || m[2].length < 2) {
         closeSuggest();
         return;
@@ -215,7 +317,6 @@
     form.appendChild(nickInput);
     form.appendChild(paletteBtn);
     form.appendChild(inputWrap);
-    form.appendChild(previewDiv);
     form.appendChild(sendBtn);
     root.appendChild(paletteBox);
     root.appendChild(status);
@@ -257,8 +358,7 @@
     }
 
     function mentionQuery() {
-      var raw = textInput.value;
-      var m = raw.match(/(^|\s)@([^\s@]{0,32})$/);
+      var m = rawText.match(/(^|\s)@([^\s@]{0,32})$/);
       return m ? m[2] : null;
     }
 
@@ -296,10 +396,10 @@
         closeSuggest();
         return;
       }
-      var raw = textInput.value;
-      var newRaw = raw.replace(/@[^\s@]*$/, "@" + name + " ");
-      textInput.value = newRaw;
-      updatePreview();
+      rawText = rawText.replace(/@[^\s@]*$/, "@" + name + " ");
+      rerenderInput();
+      var endPos = rawText.length;
+      restoreCursor(endPos);
       closeSuggest();
       textInput.focus();
     }
@@ -934,11 +1034,11 @@
 
     form.addEventListener("submit", function (e) {
       e.preventDefault();
-      var body = textInput.value.slice(0, 1000);
+      var body = rawText.slice(0, 1000);
       if (!body) return;
       var replyMsg = replyingTo;
-      textInput.value = "";
-      updatePreview();
+      rawText = "";
+      rerenderInput();
       closeSuggest();
       replyingTo = null;
       replyBar.hidden = true;

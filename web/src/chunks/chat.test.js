@@ -113,12 +113,13 @@ describe("chunk chat", () => {
     ws.fire("open");
 
     const input = document.querySelector(".chat-input");
-    input.value = "mensaje de prueba";
+    input.textContent = "mensaje de prueba";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
     chatApp().dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
 
     expect(ws.sent).toHaveLength(1);
     expect(JSON.parse(ws.sent[0])).toEqual({ type: "chat", body: "mensaje de prueba", token: null, replyTo: null });
-    expect(input.value).toBe("");
+    expect(input.textContent).toBe("");
   });
 
   it("cae a REST si el WS no puede conectarse", async () => {
@@ -149,7 +150,8 @@ describe("chunk chat", () => {
     expect(document.querySelectorAll(".chat-msg").length).toBe(1);
 
     const input = document.querySelector(".chat-input");
-    input.value = "envío offline";
+    input.textContent = "envío offline";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
     chatApp().dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
     await flush();
 
