@@ -83,38 +83,22 @@ describe("images upload (R2)", () => {
   it("sube, guarda en R2 y devuelve URL con key estable", async () => {
     const token = await makeJwt();
 
-    const realGlobal = globalThis;
-    if (typeof createImageBitmap !== "function") {
-      globalThis.createImageBitmap = async (blob) => ({
-        width: 80,
-        height: 40,
-        close() {},
-      });
-      globalThis.OffscreenCanvas = class {
-        constructor(w, h) { this.w = w; this.h = h; }
-        getContext() { return { drawImage() {} }; }
-        async convertToBlob(opts) { return new Blob(["webp-" + this.w + "x" + this.h], { type: opts.type }); }
-      };
-    }
-    try {
-      const bytes = new Uint8Array([10, 20, 30, 40, 50]);
-      const file = new File([bytes], "foto.png", { type: "image/jpeg" });
-      const res1 = await uploadRequest(token, file);
-      expect(res1.status).toBe(200);
-      const d1 = await res1.json();
-      expect(d1.url).toMatch(/^https:\/\/images\.xogalaxy\.com\/images\/google-user-1\/[a-f0-9]+\.webp$/);
+    const bytes = new Uint8Array([10, 20, 30, 40, 50]);
+    const file = new File([bytes], "foto.jpg", { type: "image/jpeg" });
+    const res1 = await uploadRequest(token, file);
+    expect(res1.status).toBe(200);
+    const d1 = await res1.json();
+    expect(d1.url).toMatch(/^https:\/\/images\.xogalaxy\.com\/images\/google-user-1\/[a-f0-9]+\.jpg$/);
 
-      const res2 = await uploadRequest(token, file);
-      expect(res2.status).toBe(200);
-      const d2 = await res2.json();
+    const res2 = await uploadRequest(token, file);
+    expect(res2.status).toBe(200);
+    const d2 = await res2.json();
+    expect(d1.key).toBe(d2.key);
 
-      const head1 = await env.IMAGES.head(d1.key);
-      expect(head1).toBeTruthy();
-      expect(head1.httpMetadata.contentType).toBe("image/webp");
-      expect(await env.IMAGES.head(d2.key)).toBeTruthy();
-    } finally {
-      if (realGlobal.createImageBitmap !== createImageBitmap) delete globalThis.createImageBitmap;
-      if (realGlobal.OffscreenCanvas !== OffscreenCanvas) delete globalThis.OffscreenCanvas;
-    }
+    const stored = await env.IMAGES.get(d1.key);
+    expect(Array.from(new Uint8Array(await stored.arrayBuffer()))).toEqual(Array.from(bytes));
+    const head1 = await env.IMAGES.head(d1.key);
+    expect(head1).toBeTruthy();
+    expect(head1.httpMetadata.contentType).toBe("image/jpeg");
   });
 });

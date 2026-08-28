@@ -264,6 +264,35 @@
       });
     }
 
+    var MAX_IMG_DIM = 1600;
+
+    function prepareImage(file) {
+      if (!file || !file.type.startsWith("image/")) return Promise.resolve(file);
+      if (file.type === "image/gif") return Promise.resolve(file);
+      if (!window.Image || !document.createElement("canvas").getContext) return Promise.resolve(file);
+      return new Promise(function (resolve) {
+        var url;
+        try { url = URL.createObjectURL(file); } catch (err) { resolve(file); return; }
+        var img = new window.Image();
+        img.onload = function () {
+          var w = img.width, h = img.height;
+          var ratio = Math.min(1, MAX_IMG_DIM / w, MAX_IMG_DIM / h);
+          var canvas = document.createElement("canvas");
+          canvas.width = Math.max(1, Math.round(w * ratio));
+          canvas.height = Math.max(1, Math.round(h * ratio));
+          var ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          URL.revokeObjectURL(url);
+          canvas.toBlob(function (blob) {
+            if (blob && blob.type === "image/webp" && blob.size > 0) resolve(blob);
+            else resolve(file);
+          }, "image/webp", 0.86);
+        };
+        img.onerror = function () { URL.revokeObjectURL(url); resolve(file); };
+        img.src = url;
+      });
+    }
+
     function uploadImageFile(file) {
       if (uploading || !file || !file.type.startsWith("image/")) return;
       uploading = true;
@@ -271,7 +300,9 @@
       if (!token) { uploading = false; return; }
       var placeholder = "![Subiendo...](uploading)";
       editor.chain().focus().insertContent(placeholder).run();
-      X.api.images.upload(file, token)
+      prepareImage(file).then(function (blob) {
+        return X.api.images.upload(blob, token);
+      })
         .then(function (d) {
           var html = editor.getHTML();
           editor.commands.setContent(html.replace(placeholder, "![](" + d.url + ")"));

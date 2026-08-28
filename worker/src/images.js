@@ -1,12 +1,13 @@
 /**
  * XO Galaxy — images upload (R2).
- * Solo cuentas Google (sub) pueden subir. Imágenes ≤5MB, convertidas a WebP,
- * deduplicadas por SHA-256. Keys: images/<sub>/<hash>.webp
+ * Solo cuentas Google (sub) pueden subir. El cliente ya envió la imagen
+ * optimizada (resize + WebP vía canvas del navegador); el worker solo guarda
+ * y deduplica por SHA-256. Keys: images/<sub>/<hash>.<ext>
  */
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const MAX_SIZE = 5 * 1024 * 1024;
-const MAX_DIMENSION = 1600;
+const EXT_BY_TYPE = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" };
 
 async function sha256(data) {
   const input = data instanceof ArrayBuffer ? data : new Uint8Array(data);
@@ -24,22 +25,6 @@ async function sha256(data) {
   let hex = "";
   for (let i = 0; i < bytes.length; i++) hex += bytes[i].toString(16).padStart(2, "0");
   return hex;
-}
-
-async function resizeWebp(blob, maxDim) {
-  const bmp = await createImageBitmap(blob);
-  let w = bmp.width;
-  let h = bmp.height;
-  if (w > maxDim || h > maxDim) {
-    const ratio = Math.min(maxDim / w, maxDim / h);
-    w = Math.round(w * ratio);
-    h = Math.round(h * ratio);
-  }
-  const canvas = new OffscreenCanvas(w, h);
-  const ctx = canvas.getContext("2d");
-  ctx.drawImage(bmp, 0, 0, w, h);
-  bmp.close();
-  return canvas.convertToBlob({ type: "image/webp", quality: 0.85 });
 }
 
 export async function handleImageUpload(request, env, origin) {
@@ -81,15 +66,14 @@ export async function handleImageUpload(request, env, origin) {
   }
 
   try {
-    const originalBlob = new Blob([await file.arrayBuffer()], { type: file.type });
-    const webpBlob = await resizeWebp(originalBlob, MAX_DIMENSION);
-    const buf = await webpBlob.arrayBuffer();
+    const buf = await file.arrayBuffer();
     const hash = await sha256(buf);
-    const key = `images/${profile.sub}/${hash}.webp`;
+    const ext = EXT_BY_TYPE[file.type] || "bin";
+    const key = `images/${profile.sub}/${hash}.${ext}`;
     const existing = await env.IMAGES.head(key);
     if (!existing) {
       await env.IMAGES.put(key, buf, {
-        httpMetadata: { contentType: "image/webp", cacheControl: "public, max-age=31536000, immutable" },
+        httpMetadata: { contentType: file.type, cacheControl: "public, max-age=31536000, immutable" },
       });
     }
     return json({ url: `https://images.xogalaxy.com/${key}`, key }, 200, cors(origin));
