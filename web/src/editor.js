@@ -48,7 +48,7 @@ export function createEditor(el, opts) {
         link: { openOnClick: false, autolink: true },
         dropcursor: { color: "var(--orbit)", width: 2 },
       }),
-      Image.configure({ inline: false, allowBase64: false }),
+      Image.configure({ inline: true, allowBase64: false }),
       Placeholder.configure({
         placeholder: "Escribí tu aporte…",
       }),

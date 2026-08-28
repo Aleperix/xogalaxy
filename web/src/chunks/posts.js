@@ -131,7 +131,7 @@
     var intro = utils.el(
       "p",
       "pt-intro",
-      "Escribí tu aporte en Markdown: un juego, una actividad, un tutorial o un hallazgo perdido (lost media) de la era XO. Quedará en revisión y, si se aprueba, se publicará en el blog."
+      "Escribí tu aporte con texto enriquecido: negrita, títulos, listas, citas, código, imágenes y enlaces — un juego, una actividad, un tutorial o un hallazgo perdido (lost media) de la era XO. Quedará en revisión y, si se aprueba, se publicará en el blog."
     );
     head.appendChild(title);
     head.appendChild(intro);
@@ -221,24 +221,26 @@
       if (!editor) return;
       bar.innerHTML = "";
       var btns = [
-        { label: "B", cmd: function () { editor.chain().focus().toggleBold().run(); }, active: "bold", title: "Negrita" },
-        { label: "I", cmd: function () { editor.chain().focus().toggleItalic().run(); }, active: "italic", title: "Cursiva" },
-        { label: "U", cmd: function () { editor.chain().focus().toggleUnderline().run(); }, active: "underline", title: "Subrayado" },
-        { label: "S", cmd: function () { editor.chain().focus().toggleStrike().run(); }, active: "strike", title: "Tachado" },
+        { icon: "bold", cmd: function () { editor.chain().focus().toggleBold().run(); }, active: "bold", title: "Negrita" },
+        { icon: "italic", cmd: function () { editor.chain().focus().toggleItalic().run(); }, active: "italic", title: "Cursiva" },
+        { icon: "underline", cmd: function () { editor.chain().focus().toggleUnderline().run(); }, active: "underline", title: "Subrayado" },
+        { icon: "strikethrough", cmd: function () { editor.chain().focus().toggleStrike().run(); }, active: "strike", title: "Tachado" },
         null,
-        { label: "H2", cmd: function () { editor.chain().focus().toggleHeading({ level: 2 }).run(); }, active: "heading", title: "Título 2" },
-        { label: "H3", cmd: function () { editor.chain().focus().toggleHeading({ level: 3 }).run(); }, active: "heading", title: "Título 3" },
+        { label: "H2", cmd: function () { editor.chain().focus().toggleHeading({ level: 2 }).run(); }, active: function () { return editor.isActive("heading", { level: 2 }); }, title: "Título 2" },
+        { label: "H3", cmd: function () { editor.chain().focus().toggleHeading({ level: 3 }).run(); }, active: function () { return editor.isActive("heading", { level: 3 }); }, title: "Título 3" },
         null,
-        { label: "•", cmd: function () { editor.chain().focus().toggleBulletList().run(); }, active: "bulletList", title: "Lista" },
-        { label: "1.", cmd: function () { editor.chain().focus().toggleOrderedList().run(); }, active: "orderedList", title: "Lista numerada" },
-        { label: ">", cmd: function () { editor.chain().focus().toggleBlockquote().run(); }, active: "blockquote", title: "Cita" },
+        { icon: "list", cmd: function () { editor.chain().focus().toggleBulletList().run(); }, active: "bulletList", title: "Lista" },
+        { icon: "list-ordered", cmd: function () { editor.chain().focus().toggleOrderedList().run(); }, active: "orderedList", title: "Lista numerada" },
+        { icon: "quote", cmd: function () { editor.chain().focus().toggleBlockquote().run(); }, active: "blockquote", title: "Cita" },
         null,
-        { label: "&lt;/&gt;", cmd: function () { editor.chain().focus().toggleCodeBlock().run(); }, active: "codeBlock", title: "Bloque de código" },
-        { label: "—", cmd: function () { editor.chain().focus().setHorizontalRule().run(); }, title: "Línea" },
+        { icon: "code", cmd: function () { editor.chain().focus().toggleCodeBlock().run(); }, active: "codeBlock", title: "Bloque de código" },
+        { icon: "minus", cmd: function () { editor.chain().focus().setHorizontalRule().run(); }, title: "Línea separadora" },
         null,
-        { label: "📎", cmd: function () { var url = global.prompt("URL de la imagen:"); if (url) editor.chain().focus().setImage({ src: url }).run(); }, title: "Imagen" },
-        { label: "↩", cmd: function () { editor.chain().focus().undo().run(); }, title: "Deshacer" },
-        { label: "↪", cmd: function () { editor.chain().focus().redo().run(); }, title: "Rehacer" },
+        { icon: "link", cmd: function () { toggleLink(); }, active: "link", title: "Enlace" },
+        { icon: "image", cmd: function () { var url = global.prompt("URL de la imagen:"); if (url) editor.chain().focus().setImage({ src: url }).run(); }, title: "Imagen" },
+        null,
+        { icon: "undo-2", cmd: function () { editor.chain().focus().undo().run(); }, title: "Deshacer" },
+        { icon: "redo-2", cmd: function () { editor.chain().focus().redo().run(); }, title: "Rehacer" },
       ];
       btns.forEach(function (def) {
         if (!def) {
@@ -248,7 +250,8 @@
         }
         var b = utils.el("button", "", "");
         b.type = "button";
-        b.innerHTML = def.label;
+        if (def.icon) b.innerHTML = '<i data-lucide="' + def.icon + '"></i>';
+        else b.textContent = def.label;
         b.title = def.title;
         b.setAttribute("aria-label", def.title);
         b.addEventListener("click", function (e) {
@@ -257,11 +260,58 @@
         });
         if (def.active) {
           editor.on("selectionUpdate", function () {
-            b.classList.toggle("active", editor.isActive(def.active));
+            b.classList.toggle("active", typeof def.active === "function" ? def.active() : editor.isActive(def.active));
           });
         }
         bar.appendChild(b);
       });
+      if (X.core && X.core.initIcons) X.core.initIcons();
+    }
+
+    function toggleLink() {
+      var state = editor.state;
+      var node = state.selection.node;
+      var isImage = node && node.type.name === "image";
+      var current = editor.getAttributes(isImage ? "image" : "link");
+      var href = isImage ? (current.linkHref || "") : (current.href || "");
+      var url = global.prompt("URL del enlace:" + (href ? " (dejalo vacío para quitarlo)" : ""), href);
+      if (url === null) return;
+      url = url.trim();
+      if (!url) {
+        if (href) {
+          if (isImage) {
+            var tr = editor.state.tr;
+            tr.removeMark(state.selection.from, state.selection.to, editor.schema.marks.link);
+            editor.view.dispatch(tr);
+            editor.chain().focus().run();
+          } else {
+            editor.chain().focus().extendMarkRange("link").unsetLink().run();
+          }
+        }
+        return;
+      }
+      var title = global.prompt("Título del enlace (opcional):", "");
+      if (title === null) return;
+      title = title.trim();
+      if (isImage) {
+        var imgAttrs = { src: node.attrs.src, alt: node.attrs.alt };
+        var pos = state.selection.from;
+        var size = node.nodeSize;
+        var tr2 = editor.state.tr;
+        tr2.delete(pos, pos + size);
+        editor.view.dispatch(tr2);
+        editor
+          .chain()
+          .focus()
+          .insertContentAt(pos, {
+            type: "image",
+            attrs: imgAttrs,
+            marks: [{ type: "link", attrs: { href: url, title: title || null } }],
+          })
+          .run();
+      } else {
+        editor.chain().focus().extendMarkRange("link").setLink({ href: url, title: title || null }).run();
+      }
     }
 
     var MAX_IMG_DIM = 1600;

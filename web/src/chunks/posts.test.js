@@ -61,6 +61,10 @@ describe("chunk posts (tool de aportes)", () => {
     expect(document.querySelector(".pt-char-count")).toBeTruthy();
     expect(document.querySelector(".pt-submit")).toBeTruthy();
     expect(document.querySelector(".pt-body-fallback")).toBeTruthy();
+    const intro = document.querySelector(".pt-intro");
+    expect(intro).toBeTruthy();
+    expect(intro.textContent).toContain("texto enriquecido");
+    expect(intro.textContent).not.toContain("Markdown");
   });
 
   it("resalta menciones @nombre en el body del post leído", async () => {
