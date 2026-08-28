@@ -4,6 +4,7 @@
  * listo para inyectarse en el template de Blogger (ver inject.mjs).
  */
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -16,3 +17,6 @@ mkdirSync(join(ROOT, "dist"), { recursive: true });
 const out = resolve(join(ROOT, "dist", "app.js"));
 writeFileSync(out, banner + parts.join("\n\n") + "\n");
 console.log("built:", out, (parts.join("\n\n").length + banner.length) + " bytes");
+
+const tiptap = spawnSync(process.execPath, [join(ROOT, "build-tiptap.mjs")], { stdio: "inherit" });
+if (tiptap.status !== 0) process.exit(tiptap.status || 1);

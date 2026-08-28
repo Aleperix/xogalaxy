@@ -293,26 +293,51 @@
       });
     }
 
+    function imageNodePos(src) {
+      var pos = null;
+      editor.state.doc.descendants(function (node, p) {
+        if (node.type.name === "image" && node.attrs.src === src) { pos = p; return false; }
+        return true;
+      });
+      return pos;
+    }
+
     function uploadImageFile(file) {
       if (uploading || !file || !file.type.startsWith("image/")) return;
       uploading = true;
       var token = X.auth && X.auth.getToken ? X.auth.getToken() : null;
       if (!token) { uploading = false; return; }
-      var placeholder = "![Subiendo...](uploading)";
-      editor.chain().focus().insertContent(placeholder).run();
-      prepareImage(file).then(function (blob) {
-        return X.api.images.upload(blob, token);
-      })
+      var previewUrl = URL.createObjectURL(file);
+      setStatus("Subiendo imagen…");
+      editor.chain().focus().setImage({ src: previewUrl, alt: "Subiendo…" }).run();
+      prepareImage(file)
+        .then(function (blob) { return X.api.images.upload(blob, token); })
         .then(function (d) {
-          var html = editor.getHTML();
-          editor.commands.setContent(html.replace(placeholder, "![](" + d.url + ")"));
+          var pos = imageNodePos(previewUrl);
+          if (pos !== null) {
+            var tr = editor.state.tr;
+            tr.setNodeAttribute(pos, "src", d.url);
+            tr.setNodeAttribute(pos, "alt", "");
+            editor.view.dispatch(tr);
+            editor.chain().focus().run();
+          }
+          setStatus("");
         })
         .catch(function () {
-          var html = editor.getHTML();
-          editor.commands.setContent(html.replace(placeholder, ""));
+          var pos = imageNodePos(previewUrl);
+          if (pos !== null) {
+            var node = editor.state.doc.nodeAt(pos);
+            var end = pos + (node ? node.nodeSize : 1);
+            var tr = editor.state.tr;
+            tr.delete(pos, end);
+            editor.view.dispatch(tr);
+          }
           setStatus("No se pudo subir la imagen.", "error");
         })
-        .finally(function () { uploading = false; });
+        .finally(function () {
+          URL.revokeObjectURL(previewUrl);
+          uploading = false;
+        });
     }
 
     var TIPTAP_URL =
