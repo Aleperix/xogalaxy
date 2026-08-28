@@ -88,7 +88,8 @@ describe("images upload (R2)", () => {
     const res1 = await uploadRequest(token, file);
     expect(res1.status).toBe(200);
     const d1 = await res1.json();
-    expect(d1.url).toMatch(/^https:\/\/images\.xogalaxy\.com\/images\/google-user-1\/[a-f0-9]+\.jpg$/);
+    expect(d1.url).toMatch(/^https:\/\/media\.xogalaxy\.workers\.dev\/images\/[a-f0-9]+\.jpg$/);
+    expect(d1.key).toMatch(/^images\/[a-f0-9]+\.jpg$/);
 
     const res2 = await uploadRequest(token, file);
     expect(res2.status).toBe(200);

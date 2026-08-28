@@ -67,11 +67,11 @@ describe("api client", () => {
     let captured = null;
     vi.stubGlobal("fetch", async (url, opts) => {
       captured = { url, method: opts.method, token: opts.headers["X-XOGALAXY-Token"], body: opts.body };
-      return new Response(JSON.stringify({ url: "https://images.xogalaxy.com/images/s1/abc.webp", key: "images/s1/abc.webp" }), { status: 200 });
+      return new Response(JSON.stringify({ url: "https://media.xogalaxy.workers.dev/images/abc123.webp", key: "images/abc123.webp" }), { status: 200 });
     });
     const file = new File(["data"], "foto.png", { type: "image/png" });
     const d = await window.XOGalaxy.api.images.upload(file, "jwt.owner");
-    expect(d.url).toBe("https://images.xogalaxy.com/images/s1/abc.webp");
+    expect(d.url).toBe("https://media.xogalaxy.workers.dev/images/abc123.webp");
     expect(captured.method).toBe("POST");
     expect(captured.token).toBe("jwt.owner");
     expect(captured.url).toContain("/images/upload");

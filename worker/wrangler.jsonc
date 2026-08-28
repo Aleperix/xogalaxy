@@ -54,7 +54,8 @@
     "OWNER_SUBS": "107284810985445490995",
     "XOGALAXY_GH_REPO": "aleperix/xogalaxy-backup",
     "EMAIL_PROVIDER": "gmail",
-    "EMAIL_FROM_DOMAIN": "xogalaxy.com"
+    "EMAIL_FROM_DOMAIN": "xogalaxy.com",
+    "MEDIA_BASE_URL": "https://media.xogalaxy.workers.dev"
   },
   "triggers": {
     "crons": ["17 4 * * *", "45 4 * * 1"]

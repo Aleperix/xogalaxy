@@ -2,7 +2,8 @@
  * XO Galaxy — images upload (R2).
  * Solo cuentas Google (sub) pueden subir. El cliente ya envió la imagen
  * optimizada (resize + WebP vía canvas del navegador); el worker solo guarda
- * y deduplica por SHA-256. Keys: images/<sub>/<hash>.<ext>
+ * y deduplica por SHA-256. Keys planas: images/<hash>.<ext>
+ * El serve público lo hace el worker media (media.xogalaxy.workers.dev).
  */
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
@@ -69,14 +70,15 @@ export async function handleImageUpload(request, env, origin) {
     const buf = await file.arrayBuffer();
     const hash = await sha256(buf);
     const ext = EXT_BY_TYPE[file.type] || "bin";
-    const key = `images/${profile.sub}/${hash}.${ext}`;
+    const key = `images/${hash}.${ext}`;
     const existing = await env.IMAGES.head(key);
     if (!existing) {
       await env.IMAGES.put(key, buf, {
         httpMetadata: { contentType: file.type, cacheControl: "public, max-age=31536000, immutable" },
       });
     }
-    return json({ url: `https://images.xogalaxy.com/${key}`, key }, 200, cors(origin));
+    const base = env.MEDIA_BASE_URL || "https://media.xogalaxy.workers.dev";
+    return json({ url: `${base}/${key}`, key }, 200, cors(origin));
   } catch (err) {
     return json({ error: "upload failed: " + err.message }, 500, cors(origin));
   }
