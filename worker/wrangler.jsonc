@@ -45,7 +45,7 @@
   "r2_buckets": [
     {
       "binding": "IMAGES",
-      "bucket_name": "xogalaxy-images"
+      "bucket_name": "xogalaxy-media"
     }
   ],
   "vars": {
