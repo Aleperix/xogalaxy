@@ -5,13 +5,9 @@
  */
 import { Editor } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
-import Link from "@tiptap/extension-link";
 import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
 import CharacterCount from "@tiptap/extension-character-count";
-import Dropcursor from "@tiptap/extension-dropcursor";
-import Underline from "@tiptap/extension-underline";
-import History from "@tiptap/extension-history";
 import Mention from "@tiptap/extension-mention";
 import TurndownService from "turndown";
 
@@ -49,17 +45,14 @@ export function createEditor(el, opts) {
     extensions: [
       StarterKit.configure({
         heading: { levels: [2, 3] },
-        history: false,
+        link: { openOnClick: false, autolink: true },
+        dropcursor: { color: "var(--orbit)", width: 2 },
       }),
-      Underline,
-      History,
-      Link.configure({ openOnClick: false, autolink: true }),
       Image.configure({ inline: false, allowBase64: false }),
       Placeholder.configure({
         placeholder: "Escribí tu aporte…",
       }),
       CharacterCount.configure({ limit: opts.maxChars || 20000 }),
-      Dropcursor.configure({ color: "var(--orbit)", width: 2 }),
       Mention.configure({
         HTMLAttributes: { class: "tiptap-mention" },
         suggestion: {
