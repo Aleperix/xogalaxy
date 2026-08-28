@@ -62,4 +62,49 @@ describe("api client", () => {
     await window.XOGalaxy.api.chatSend("general", "Ana", "hola", "jwt");
     expect(sent).toEqual({ room: "general", nickname: "Ana", body: "hola", token: "jwt", replyTo: null });
   });
+
+  it("images.upload manda FormData con el file y el token", async () => {
+    let captured = null;
+    vi.stubGlobal("fetch", async (url, opts) => {
+      captured = { url, method: opts.method, token: opts.headers["X-XOGALAXY-Token"], body: opts.body };
+      return new Response(JSON.stringify({ url: "https://images.xogalaxy.com/images/s1/abc.webp", key: "images/s1/abc.webp" }), { status: 200 });
+    });
+    const file = new File(["data"], "foto.png", { type: "image/png" });
+    const d = await window.XOGalaxy.api.images.upload(file, "jwt.owner");
+    expect(d.url).toBe("https://images.xogalaxy.com/images/s1/abc.webp");
+    expect(captured.method).toBe("POST");
+    expect(captured.token).toBe("jwt.owner");
+    expect(captured.url).toContain("/images/upload");
+    expect(captured.body instanceof FormData).toBe(true);
+  });
+
+  it("images.upload propaga error 403 de cuentas no-Google", async () => {
+    vi.stubGlobal("fetch", async () =>
+      new Response(JSON.stringify({ error: "solo cuentas Google pueden subir imágenes" }), { status: 403 })
+    );
+    await expect(window.XOGalaxy.api.images.upload(new File(["x"], "a.png", { type: "image/png" }), "")).rejects.toThrow(
+      "solo cuentas Google"
+    );
+  });
+
+  it("images.upload propaga 429 rate-limit", async () => {
+    vi.stubGlobal("fetch", async () =>
+      new Response(JSON.stringify({ error: "no toques el power-driverr" }), { status: 429 })
+    );
+    await expect(window.XOGalaxy.api.images.upload(new File(["x"], "a.png", { type: "image/png" }), "jwt")).rejects.toThrow(
+      "no toques"
+    );
+  });
+
+  it("suggest pega a /users/suggest con q>=2", async () => {
+    const seen = [];
+    vi.stubGlobal("fetch", async (url) => {
+      const u = new URL(url);
+      seen.push(u.pathname + u.search);
+      return new Response(JSON.stringify({ users: [{ sub: "s1", name: "Ana", picture: "p" }] }), { status: 200 });
+    });
+    const d = await window.XOGalaxy.api.suggest("an");
+    expect(d.users[0].name).toBe("Ana");
+    expect(seen).toEqual(["/users/suggest?q=an"]);
+  });
 });

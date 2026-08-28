@@ -177,6 +177,22 @@
     return post("/posts/url", { id: id, url: url }, { "X-XOGALAXY-Token": token });
   }
 
+  // ---- imágenes (R2 upload) ----
+  function imagesUpload(file, token) {
+    var fd = new FormData();
+    fd.append("file", file);
+    return fetch(BACKEND + "/images/upload", {
+      method: "POST",
+      headers: { "X-XOGALAXY-Token": token || "" },
+      body: fd,
+    }).then(function (r) {
+      return parse(r).then(function (d) {
+        if (!r.ok) throw apiError(r, d);
+        return d;
+      });
+    });
+  }
+
   // ---- releases (proxy GitHub) ----
   function release(url) {
     return get("/releases?url=" + encodeURIComponent(url));
@@ -258,6 +274,9 @@
       modReview: postsReview,
       remove: postsDelete,
       setUrl: postsSetUrl,
+    },
+    images: {
+      upload: imagesUpload,
     },
     profiles: {
       get: profilesGet,

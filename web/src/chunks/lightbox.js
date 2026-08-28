@@ -1,7 +1,7 @@
 /**
  * XO Galaxy — chunk lightbox.
  * Visor de imágenes a pantalla completa para el contenido renderizado
- * (.post-body, .chat-msg-body, .cmt-body, .pt-post-body, .pt-preview).
+ * (.post-body, .chat-msg-body, .cmt-body, .pt-post-body).
  * Click en imagen abre el overlay; agrupa todas las imágenes visibles del
  * documento para navegar con ←/→. Ignora imágenes dentro de enlaces (covers,
  * thumbs clickeables). ESC o click fuera cierra; click en la imagen hace zoom.
@@ -13,7 +13,7 @@
   var utils = X.core.utils;
 
   var ALLOW_SELECTOR =
-    ".post-body img, .chat-msg-body img, .cmt-body img, .pt-post-body img, .pt-preview img";
+    ".post-body img, .chat-msg-body img, .cmt-body img, .pt-post-body img";
 
   var backdrop = null;
   var imgEl = null;

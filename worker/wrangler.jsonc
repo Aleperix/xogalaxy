@@ -42,6 +42,12 @@
       "new_sqlite_classes": ["Room"]
     }
   ],
+  "r2_buckets": [
+    {
+      "binding": "IMAGES",
+      "bucket_name": "xogalaxy-images"
+    }
+  ],
   "vars": {
     "ALLOWED_ORIGINS": "https://xogalax.blogspot.com,https://xogalaxy.pages.dev",
     "GOOGLE_CLIENT_ID": "876770060285-9t4e4oehkbpkvaqrfpt6fr1a2cdl8649.apps.googleusercontent.com",

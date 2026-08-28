@@ -13,6 +13,7 @@ import { sendEmail } from "./email.js";
 import * as emails from "./emails.js";
 import * as chatArchive from "./chatArchive.js";
 import * as mentions from "./mentions.js";
+import { marked } from "marked";
 
 export { Stats } from "./stats.js";
 export { Room } from "./room.js";
@@ -36,6 +37,73 @@ const REACTION_RATE_LIMIT = 30;
 const FOLLOW_RATE_LIMIT = 30;
 const PROFILE_RATE_LIMIT = 30;
 const ENGAGEMENT_TARGETS_MAX = 50;
+
+// ---- Blogger API ----
+
+const BLOGGER_API = "https://www.googleapis.com/blogger/v3";
+const BLOGGER_TOKEN_URI = "https://oauth2.googleapis.com/token";
+
+async function refreshBloggerToken(env) {
+  const res = await fetch(BLOGGER_TOKEN_URI, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "refresh_token",
+      client_id: env.BLOGGER_CLIENT_ID,
+      client_secret: env.BLOGGER_CLIENT_SECRET,
+      refresh_token: env.BLOGGER_REFRESH_TOKEN,
+    }),
+  });
+  const data = await res.json();
+  if (!res.ok || !data.access_token) throw new Error("blogger token: " + res.status);
+  return data.access_token;
+}
+
+async function publishToBlogger(env, post) {
+  if (!env.BLOGGER_CLIENT_ID || !env.BLOGGER_CLIENT_SECRET || !env.BLOGGER_REFRESH_TOKEN) {
+    return { published: false, error: "blogger credentials not configured" };
+  }
+  try {
+    const token = await refreshBloggerToken(env);
+    const html = marked.parse(post.body || "");
+    const authorName = (post.author && post.author.name) || "Anónimo";
+    const authorPic = (post.author && post.author.picture) || "";
+    const authorSub = (post.author && post.author.sub) || "";
+    const authorVisitor = (post.author && post.author.visitor) || "";
+    const byline = '<span class="xo-author-data" data-name="' +
+      authorName.replace(/"/g, "&quot;").replace(/</g, "&lt;") +
+      '" data-pic="' +
+      authorPic.replace(/"/g, "&quot;") +
+      '" data-sub="' +
+      authorSub.replace(/"/g, "&quot;") +
+      '" data-visitor="' +
+      authorVisitor.replace(/"/g, "&quot;") +
+      '"></span>';
+    const content = byline + html;
+    const res = await fetch(
+      BLOGGER_API + "/blogs/" + BLOG_ID + "/posts?fields=id,title,status,url",
+      {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + token,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title: post.title,
+          content,
+          labels: ["comunidad"],
+        }),
+      }
+    );
+    const data = await res.json();
+    if (!res.ok || !data.url) {
+      return { published: false, error: "blogger create: " + res.status + " " + JSON.stringify(data) };
+    }
+    return { published: true, bloggerUrl: data.url, bloggerId: data.id };
+  } catch (err) {
+    return { published: false, error: err.message };
+  }
+}
 
 async function ensureComments(db) {
   const row = await db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='comments'`).first();
@@ -86,6 +154,20 @@ export default {
 
     if (request.method === "OPTIONS") {
       return handlePreflight(origin, allowed);
+    }
+
+    if (path === "/dist/tiptap.js" && request.method === "GET") {
+      const cached = await env.XOGALAXY_KV.get("assets:tiptap", { type: "text" });
+      if (cached == null) {
+        return json({ error: "asset not found" }, 404, cors(origin));
+      }
+      return new Response(cached, {
+        headers: {
+          "Content-Type": "text/javascript; charset=utf-8",
+          "Access-Control-Allow-Origin": "*",
+          "Cache-Control": "public, max-age=86400, s-maxage=3600, stale-while-revalidate=604800",
+        },
+      });
     }
 
     if (origin && !allowed.includes(origin)) {
@@ -186,6 +268,9 @@ export default {
           return handleUnsubscribe(request, env, origin);
         case "/preferences":
           return handlePreferences(request, env, origin);
+        case "/images/upload":
+          const { handleImageUpload } = await import("./images.js");
+          return handleImageUpload(request, env, origin);
         default:
           return json({ error: "not found" }, 404, cors(origin));
       }
@@ -778,7 +863,16 @@ async function handlePostsReview(request, env, origin) {
     id,
     action === "approve" ? posts.POST_STATUS.APPROVED : posts.POST_STATUS.REJECTED
   );
-  return json({ post: row }, row ? 200 : 404, cors(origin));
+  if (!row) return json({ post: null }, 404, cors(origin));
+  if (action === "approve") {
+    const result = await publishToBlogger(env, row);
+    if (result.published && result.bloggerUrl) {
+      await posts.setPostUrl(env.DB, id, result.bloggerUrl);
+      row.postUrl = result.bloggerUrl;
+    }
+    return json({ post: row, published: result.published, bloggerUrl: result.bloggerUrl || null, error: result.error || null }, 200, cors(origin));
+  }
+  return json({ post: row }, 200, cors(origin));
 }
 
 async function handlePostsDelete(request, env, origin) {

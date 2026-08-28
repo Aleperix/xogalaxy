@@ -52,29 +52,41 @@ describe("chunk posts (tool de aportes)", () => {
     expect(document.querySelector(".post-tool")).toBeNull();
   });
 
-  it("monta el formulario con botones rápidos y preview debounced", async () => {
+  it("monta el formulario con toolbar y editor container", async () => {
     loadVendored();
     window.XOGalaxy.posts.init();
     expect(document.querySelector(".pt-title-input")).toBeTruthy();
-    expect(document.querySelectorAll(".pt-qbtn").length).toBe(9);
-
-    const ta = document.querySelector(".pt-body");
-    ta.value = "# Título\n\n**negrita**";
-    ta.dispatchEvent(new Event("input", { bubbles: true }));
-    document.querySelector(".pt-preview-toggle").click();
-    await flush(200);
-
-    expect(document.querySelector(".pt-preview").hidden).toBe(false);
-    expect(document.querySelector(".pt-preview").innerHTML).toContain("<h1>Título</h1>");
+    expect(document.querySelector(".pt-toolbar")).toBeTruthy();
+    expect(document.querySelector(".pt-editor")).toBeTruthy();
+    expect(document.querySelector(".pt-char-count")).toBeTruthy();
+    expect(document.querySelector(".pt-submit")).toBeTruthy();
+    expect(document.querySelector(".pt-body-fallback")).toBeTruthy();
   });
 
-  it("los botones rápidos insertan markdown", () => {
+  it("resalta menciones @nombre en el body del post leído", async () => {
+    loadVendored();
+    mockBackend({
+      "/posts/my": () =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({
+              posts: [
+                { id: 5, title: "Menciona", body: "Hola @Luna y @Marte como va", author: { name: "Yo" }, createdAt: 1700000000000, status: "approved" },
+              ],
+            }),
+            { status: 200 }
+          )
+        ),
+    });
     window.XOGalaxy.posts.init();
-    const ta = document.querySelector(".pt-body");
-    ta.value = "hola";
-    ta.setSelectionRange(0, 4);
-    document.querySelectorAll(".pt-qbtn")[1].click();
-    expect(ta.value).toBe("**hola**");
+    document.querySelector(".pt-my-toggle").click();
+    await flush();
+    await flush(10);
+
+    const mentions = document.querySelectorAll(".pt-my-items .chat-mention");
+    expect(mentions.length).toBe(2);
+    expect(mentions[0].textContent).toBe("@Luna");
+    expect(mentions[1].textContent).toBe("@Marte");
   });
 
   it("enviar anónimo manda name sin token y avisa que quedó en revisión", async () => {
@@ -97,7 +109,7 @@ describe("chunk posts (tool de aportes)", () => {
     const name = document.querySelector(".pt-name");
     name.value = "Visitante";
     document.querySelector(".pt-title-input").value = "Mi aporte";
-    document.querySelector(".pt-body").value = "# Contenido";
+    document.querySelector(".pt-body-fallback").value = "# Contenido";
     document.querySelector(".pt-form").dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
     await flush();
 
@@ -162,7 +174,7 @@ describe("chunk posts (tool de aportes)", () => {
         reviewed = JSON.parse(opts.body);
         const post = store.find((p) => p.id === reviewed.id);
         if (post) post.status = reviewed.action === "approve" ? "approved" : "rejected";
-        return Promise.resolve(new Response(JSON.stringify({ post: {} }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify({ post: {}, published: true, bloggerUrl: "https://xogalax.blogspot.com/2026/08/a.html" }), { status: 200 }));
       },
       "/posts/url": (u, opts) => {
         urlSaved = JSON.parse(opts.body);
@@ -179,7 +191,7 @@ describe("chunk posts (tool de aportes)", () => {
     await flush();
 
     document.querySelector(".pt-approve").click();
-    await flush();
+    await flush(1500);
     expect(reviewed).toEqual({ id: 7, action: "approve" });
 
     document.querySelector(".pt-mod-approved .pt-url").value = "https://xogalax.blogspot.com/2026/08/a.html";

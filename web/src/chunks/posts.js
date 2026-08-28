@@ -45,6 +45,32 @@
     }, 1600);
   }
 
+  var MENTION_RE = /(^|\s)(@[\p{L}\p{N}][\p{L}\p{N}_.-]{1,31})/gu;
+  function highlightMentions(el) {
+    var walker = global.document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
+    var nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach(function (textNode) {
+      if (!textNode.nodeValue || textNode.nodeValue.indexOf("@") === -1) return;
+      MENTION_RE.lastIndex = 0;
+      if (!MENTION_RE.test(textNode.nodeValue)) return;
+      MENTION_RE.lastIndex = 0;
+      var frag = global.document.createDocumentFragment();
+      var last = 0;
+      var m;
+      while ((m = MENTION_RE.exec(textNode.nodeValue)) !== null) {
+        if (m.index > last) frag.appendChild(global.document.createTextNode(textNode.nodeValue.slice(last, m.index)));
+        var span = global.document.createElement("span");
+        span.className = "chat-mention";
+        span.textContent = m[2];
+        frag.appendChild(span);
+        last = m.index + m[0].length;
+      }
+      if (last < textNode.nodeValue.length) frag.appendChild(global.document.createTextNode(textNode.nodeValue.slice(last)));
+      textNode.parentNode.replaceChild(frag, textNode);
+    });
+  }
+
   function renderMarkdown(text, sanitize) {
     if (X.markdown && X.markdown.render) {
       try {
@@ -60,7 +86,26 @@
     if (p.status === STATUS.REJECTED) card.classList.add("pt-post-rejected");
     var h = utils.el("div", "pt-post-head");
     var t = utils.el("h3", "pt-post-title", p.title);
-    var meta = utils.el("span", "pt-post-meta", (p.author && p.author.name) || "Anónimo");
+    var meta = utils.el("div", "pt-post-meta");
+    var authorWrap = utils.el("span", "pt-post-author-wrap");
+    authorWrap.style.cursor = "pointer";
+    authorWrap.style.display = "inline-flex";
+    authorWrap.style.alignItems = "center";
+    authorWrap.style.gap = "5px";
+    if (p.author && p.author.picture) {
+      var avatar = utils.el("img", "pt-post-avatar");
+      avatar.src = p.author.picture;
+      avatar.alt = p.author.name || "";
+      authorWrap.appendChild(avatar);
+    }
+    var nameSpan = utils.el("span", "pt-post-author-name", (p.author && p.author.name) || "Anónimo");
+    authorWrap.appendChild(nameSpan);
+    authorWrap.addEventListener("click", function () {
+      if (p.author && (p.author.sub || p.author.visitor)) {
+        X.posts.showProfile({ sub: p.author.sub, visitor: p.author.visitor, name: p.author.name, picture: p.author.picture });
+      }
+    });
+    meta.appendChild(authorWrap);
     var badge = utils.el("span", "pt-post-status " + p.status, STATUS_LABEL[p.status] || p.status);
     h.appendChild(t);
     h.appendChild(meta);
@@ -68,6 +113,7 @@
     card.appendChild(h);
     var body = utils.el("div", "pt-post-body");
     body.innerHTML = renderMarkdown(p.body, true);
+    highlightMentions(body);
     card.appendChild(body);
     var when = utils.el("time", "pt-post-when");
     try {
@@ -111,40 +157,20 @@
     titleInput.placeholder = "Título del aporte";
     titleInput.setAttribute("aria-label", "Título");
 
-    var bar = utils.el("div", "pt-bar");
-    var quickButtons = [
-      { label: "H2", snippet: "## ", wrap: null },
-      { label: "N", snippet: "**", wrap: "**", bold: true },
-      { label: "C", snippet: "`", wrap: "`" },
-      { label: "L", snippet: "[texto](https://)", wrap: null },
-      { label: "Img", snippet: "![alt](https://)", wrap: null },
-      { label: "•", snippet: "- item", wrap: null },
-      { label: "1.", snippet: "1. item", wrap: null },
-      { label: ">", snippet: "> ", wrap: null },
-      { label: "—", snippet: "\n---\n", wrap: null },
-    ];
-    quickButtons.forEach(function (q) {
-      var b = utils.el("button", "pt-qbtn", q.label);
-      b.type = "button";
-      b.setAttribute("aria-label", "Insertar " + q.label);
-      b.addEventListener("click", function () {
-        insertSnippet(textarea, q.snippet, q.wrap);
-      });
-      bar.appendChild(b);
-    });
+    var editorWrap = utils.el("div", "pt-editor-wrap");
+    var bar = utils.el("div", "pt-toolbar");
+    var charCount = utils.el("span", "pt-char-count");
+    charCount.textContent = "0 / " + POST_BODY_MAX;
 
-    var textarea = utils.el("textarea", "pt-body");
-    textarea.maxLength = POST_BODY_MAX;
-    textarea.placeholder = "# Escribí en Markdown…";
-    textarea.setAttribute("aria-label", "Contenido del aporte");
-
-    var previewWrap = utils.el("div", "pt-preview-wrap");
-    var previewToggle = utils.el("button", "pt-preview-toggle", "Vista previa");
-    previewToggle.type = "button";
-    var preview = utils.el("div", "pt-preview");
-    preview.hidden = true;
-    previewWrap.appendChild(previewToggle);
-    previewWrap.appendChild(preview);
+    var editorContainer = utils.el("div", "pt-editor");
+    var fallbackBody = utils.el("textarea", "pt-body-fallback");
+    fallbackBody.hidden = true;
+    fallbackBody.maxLength = POST_BODY_MAX;
+    fallbackBody.placeholder = "Escribí tu aporte…";
+    editorWrap.appendChild(bar);
+    editorWrap.appendChild(editorContainer);
+    editorWrap.appendChild(fallbackBody);
+    editorWrap.appendChild(charCount);
 
     var status = utils.el("p", "pt-status");
     status.hidden = true;
@@ -152,9 +178,7 @@
     submit.type = "submit";
 
     form.appendChild(titleInput);
-    form.appendChild(bar);
-    form.appendChild(textarea);
-    form.appendChild(previewWrap);
+    form.appendChild(editorWrap);
     form.appendChild(status);
     form.appendChild(submit);
     root.appendChild(form);
@@ -181,29 +205,123 @@
 
     container.appendChild(root);
 
+    // ---- Tiptap editor (lazy load) ----
+    var editor = null;
+    var uploading = false;
+    var htmlToMd = null;
+
+    function updateCharCount() {
+      if (!editor) return;
+      var count = editor.storage.characterCount.characters();
+      charCount.textContent = count + " / " + POST_BODY_MAX;
+      charCount.className = "pt-char-count" + (count > POST_BODY_MAX ? " over" : count > POST_BODY_MAX * 0.9 ? " warn" : "");
+    }
+
+    function buildToolbar() {
+      if (!editor) return;
+      bar.innerHTML = "";
+      var btns = [
+        { label: "B", cmd: function () { editor.chain().focus().toggleBold().run(); }, active: "bold", title: "Negrita" },
+        { label: "I", cmd: function () { editor.chain().focus().toggleItalic().run(); }, active: "italic", title: "Cursiva" },
+        { label: "U", cmd: function () { editor.chain().focus().toggleUnderline().run(); }, active: "underline", title: "Subrayado" },
+        { label: "S", cmd: function () { editor.chain().focus().toggleStrike().run(); }, active: "strike", title: "Tachado" },
+        null,
+        { label: "H2", cmd: function () { editor.chain().focus().toggleHeading({ level: 2 }).run(); }, active: "heading", title: "Título 2" },
+        { label: "H3", cmd: function () { editor.chain().focus().toggleHeading({ level: 3 }).run(); }, active: "heading", title: "Título 3" },
+        null,
+        { label: "•", cmd: function () { editor.chain().focus().toggleBulletList().run(); }, active: "bulletList", title: "Lista" },
+        { label: "1.", cmd: function () { editor.chain().focus().toggleOrderedList().run(); }, active: "orderedList", title: "Lista numerada" },
+        { label: ">", cmd: function () { editor.chain().focus().toggleBlockquote().run(); }, active: "blockquote", title: "Cita" },
+        null,
+        { label: "&lt;/&gt;", cmd: function () { editor.chain().focus().toggleCodeBlock().run(); }, active: "codeBlock", title: "Bloque de código" },
+        { label: "—", cmd: function () { editor.chain().focus().setHorizontalRule().run(); }, title: "Línea" },
+        null,
+        { label: "📎", cmd: function () { var url = global.prompt("URL de la imagen:"); if (url) editor.chain().focus().setImage({ src: url }).run(); }, title: "Imagen" },
+        { label: "↩", cmd: function () { editor.chain().focus().undo().run(); }, title: "Deshacer" },
+        { label: "↪", cmd: function () { editor.chain().focus().redo().run(); }, title: "Rehacer" },
+      ];
+      btns.forEach(function (def) {
+        if (!def) {
+          var sep = utils.el("span", "pt-toolbar-sep");
+          bar.appendChild(sep);
+          return;
+        }
+        var b = utils.el("button", "", "");
+        b.type = "button";
+        b.innerHTML = def.label;
+        b.title = def.title;
+        b.setAttribute("aria-label", def.title);
+        b.addEventListener("click", function (e) {
+          e.preventDefault();
+          def.cmd();
+        });
+        if (def.active) {
+          editor.on("selectionUpdate", function () {
+            b.classList.toggle("active", editor.isActive(def.active));
+          });
+        }
+        bar.appendChild(b);
+      });
+    }
+
+    function uploadImageFile(file) {
+      if (uploading || !file || !file.type.startsWith("image/")) return;
+      uploading = true;
+      var token = X.auth && X.auth.getToken ? X.auth.getToken() : null;
+      if (!token) { uploading = false; return; }
+      var placeholder = "![Subiendo...](uploading)";
+      editor.chain().focus().insertContent(placeholder).run();
+      X.api.images.upload(file, token)
+        .then(function (d) {
+          var html = editor.getHTML();
+          editor.commands.setContent(html.replace(placeholder, "![](" + d.url + ")"));
+        })
+        .catch(function () {
+          var html = editor.getHTML();
+          editor.commands.setContent(html.replace(placeholder, ""));
+          setStatus("No se pudo subir la imagen.", "error");
+        })
+        .finally(function () { uploading = false; });
+    }
+
+    var TIPTAP_URL =
+      (window.XOGALAXY_CONFIG && window.XOGALAXY_CONFIG.tiptap) || "https://backend.xogalaxy.workers.dev/dist/tiptap.js";
+
+    function loadTiptap(callback) {
+      if (editor) { callback(); return; }
+      import(TIPTAP_URL).then(function (mod) {
+        editor = mod.createEditor(editorContainer, {
+          maxChars: POST_BODY_MAX,
+          suggestUsers: function (q) {
+            return X.api.suggest(q.query || q).then(function (d) {
+              return (d.users || []).map(function (u) {
+                return { id: u.sub, label: (u.name || "").split(/\s+/)[0].slice(0, 32), picture: u.picture || "" };
+              });
+            });
+          },
+          onUpdate: function () { updateCharCount(); },
+        });
+        htmlToMd = mod.htmlToMarkdown;
+        buildToolbar();
+        editorContainer.addEventListener("drop", function (e) {
+          var files = e.dataTransfer && e.dataTransfer.files;
+          if (files && files.length) { e.preventDefault(); uploadImageFile(files[0]); }
+        });
+        editorContainer.addEventListener("paste", function (e) {
+          var files = e.clipboardData && e.clipboardData.files;
+          if (files && files.length) { e.preventDefault(); uploadImageFile(files[0]); }
+        });
+        callback();
+      }).catch(function () { callback(); });
+    }
+
+    loadTiptap(function () {});
+
     function setStatus(text, cls) {
       status.textContent = text;
       status.hidden = !text;
       status.className = "pt-status" + (cls ? " " + cls : "");
     }
-
-    function renderPreview() {
-      preview.innerHTML = renderMarkdown(textarea.value, false);
-    }
-
-    var debounceTimer = null;
-    textarea.addEventListener("input", function () {
-      if (debounceTimer) global.clearTimeout(debounceTimer);
-      debounceTimer = global.setTimeout(function () {
-        renderPreview();
-      }, DEBOUNCE_MS);
-    });
-
-    previewToggle.addEventListener("click", function () {
-      preview.hidden = !preview.hidden;
-      previewToggle.textContent = preview.hidden ? "Vista previa" : "Ocultar vista";
-      if (!preview.hidden) renderPreview();
-    });
 
     // ---- identidad ----
     function renderAuth() {
@@ -232,7 +350,13 @@
 
     function submitPost() {
       var t = titleInput.value.trim().slice(0, POST_TITLE_MAX);
-      var body = textarea.value.trim().slice(0, POST_BODY_MAX);
+      var body = "";
+      if (editor) {
+        var html = editor.getHTML();
+        body = (htmlToMd ? htmlToMd(html) : html).trim().slice(0, POST_BODY_MAX);
+      } else if (fallbackBody) {
+        body = fallbackBody.value.trim().slice(0, POST_BODY_MAX);
+      }
       if (!t || !body) {
         setStatus("Completá el título y el contenido.", "error");
         return;
@@ -249,8 +373,8 @@
         .create(payload)
         .then(function (d) {
           titleInput.value = "";
-          textarea.value = "";
-          renderPreview();
+          if (editor) editor.commands.setContent("<p></p>");
+          updateCharCount();
           if (d.post && d.post.status === "approved") setStatus("Publicado.", "pending");
           else setStatus("Gracias. Tu aporte quedó en revisión.", "pending");
           refreshTray();
@@ -272,22 +396,6 @@
     logoutBtn.addEventListener("click", function () {
       X.auth.logout();
     });
-
-    // ---- botones rápidos ----
-    function insertSnippet(ta, snippet, wrap) {
-      var start = ta.selectionStart == null ? 0 : ta.selectionStart;
-      var end = ta.selectionEnd == null ? 0 : ta.selectionEnd;
-      var sel = ta.value.slice(start, end);
-      var val;
-      if (wrap && sel) val = wrap + sel + wrap;
-      else val = snippet;
-      ta.value = ta.value.slice(0, start) + val + ta.value.slice(end);
-      ta.focus();
-      try {
-        ta.setSelectionRange(start, start + val.length);
-      } catch (err) {}
-      renderPreview();
-    }
 
     // ---- bandeja ----
     function renderTray() {
@@ -326,13 +434,29 @@
             actions.appendChild(reject);
             card.appendChild(actions);
             approve.addEventListener("click", function () {
+              approve.disabled = true;
+              approve.textContent = "Publicando…";
               X.api.posts
                 .modReview(post.id, "approve", token)
-                .then(function () {
-                  card.remove();
-                  renderTray();
+                .then(function (d) {
+                  if (d && d.published) {
+                    approve.textContent = "Publicado en Blogger ✓";
+                    approve.style.color = "var(--signal)";
+                  } else if (d && d.error) {
+                    approve.textContent = "Aprobado (Blogger: " + d.error.slice(0, 40) + ")";
+                    approve.style.color = "var(--orbit)";
+                  } else {
+                    approve.textContent = "Aprobado";
+                  }
+                  setTimeout(function () {
+                    card.remove();
+                    renderTray();
+                  }, 1200);
                 })
-                .catch(function () {});
+                .catch(function () {
+                  approve.disabled = false;
+                  approve.textContent = "Aprobar";
+                });
             });
             reject.addEventListener("click", function () {
               X.api.posts

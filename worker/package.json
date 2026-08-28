@@ -7,7 +7,7 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "test": "vitest run",
-    "check": "node --check src/index.js && node --check src/stats.js && node --check src/followers.js && node --check src/profiles.js && node --check src/wayback.js && node --check src/room.js && node --check src/auth.js && node --check src/comments.js && node --check src/posts.js && node --check src/engagement.js && node --check src/email.js && node --check src/emails.js && node --check src/newsletter.js"
+    "check": "node --check src/index.js && node --check src/stats.js && node --check src/followers.js && node --check src/profiles.js && node --check src/wayback.js && node --check src/room.js && node --check src/auth.js && node --check src/comments.js && node --check src/posts.js && node --check src/engagement.js && node --check src/email.js && node --check src/emails.js && node --check src/newsletter.js && node --check src/images.js && node --check src/mentions.js && node --check src/releases.js && node --check src/chatArchive.js"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.20.2",
@@ -15,6 +15,7 @@
     "wrangler": "^4.119.0"
   },
   "dependencies": {
+    "marked": "^18.0.11",
     "nodemailer": "^9.0.5"
   }
 }

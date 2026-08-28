@@ -53,6 +53,7 @@
     textInput.setAttribute("aria-label", "Mensaje");
     textInput.setAttribute("data-placeholder", "Escribí un mensaje…");
     var rawText = "";
+    var activeStyle = { bold: false, italic: false, underline: false, strike: false, color: null };
     var sendBtn = utils.el("button", "chat-send", "Enviar");
     sendBtn.type = "submit";
     var paletteBtn = utils.el("button", "msg-style-btn");
@@ -197,6 +198,31 @@
       range.collapse(false);
     }
 
+    function buildStylePrefix() {
+      var p = "";
+      if (activeStyle.bold) p += "\u00a7l";
+      if (activeStyle.italic) p += "\u00a7o";
+      if (activeStyle.underline) p += "\u00a7n";
+      if (activeStyle.strike) p += "\u00a7m";
+      if (activeStyle.color) p += "\u00a7" + activeStyle.color;
+      return p;
+    }
+
+    function updatePaletteActive() {
+      var codes = paletteBox.querySelectorAll(".msg-style-code");
+      for (var i = 0; i < codes.length; i++) {
+        var c = codes[i].dataset.code;
+        var isActive = false;
+        if (c === "l") isActive = activeStyle.bold;
+        else if (c === "o") isActive = activeStyle.italic;
+        else if (c === "n") isActive = activeStyle.underline;
+        else if (c === "m") isActive = activeStyle.strike;
+        else if (c === "r") isActive = false;
+        else isActive = activeStyle.color === c;
+        codes[i].classList.toggle("active", isActive);
+      }
+    }
+
     function insertStyleCode(code) {
       var sel = global.getSelection();
       var selected = "";
@@ -204,11 +230,11 @@
         selected = sel.getRangeAt(0).toString();
       }
       if (code === "r") {
-        var cursor = saveCursor();
-        rawText = rawText.slice(0, cursor) + "\u00a7r" + rawText.slice(cursor);
-        rerenderInput();
-        restoreCursor(cursor + 2);
-      } else if (selected) {
+        activeStyle = { bold: false, italic: false, underline: false, strike: false, color: null };
+        updatePaletteActive();
+        return;
+      }
+      if (selected) {
         var cursorStart = saveCursor();
         var cursorEnd = cursorStart + selected.length;
         var rawStart = plainToRaw(cursorStart, rawText);
@@ -217,11 +243,12 @@
         rerenderInput();
         restoreCursor(cursorStart + 2 + selected.length);
       } else {
-        var cursor = saveCursor();
-        var rawPos = plainToRaw(cursor, rawText);
-        rawText = rawText.slice(0, rawPos) + "\u00a7" + code + rawText.slice(rawPos);
-        rerenderInput();
-        restoreCursor(cursor + 2);
+        if (code === "l") activeStyle.bold = !activeStyle.bold;
+        else if (code === "o") activeStyle.italic = !activeStyle.italic;
+        else if (code === "n") activeStyle.underline = !activeStyle.underline;
+        else if (code === "m") activeStyle.strike = !activeStyle.strike;
+        else activeStyle.color = activeStyle.color === code ? null : code;
+        updatePaletteActive();
       }
     }
 
@@ -256,7 +283,49 @@
       insertStyleCode(btn.dataset.code);
     });
 
+    var _handledInput = false;
+
+    textInput.addEventListener("beforeinput", function (e) {
+      if (e.inputType === "insertText" && e.data) {
+        e.preventDefault();
+        _handledInput = true;
+        var cursor = saveCursor();
+        var rawPos = plainToRaw(cursor, rawText);
+        var prefix = buildStylePrefix();
+        var suffix = prefix ? "\u00a7r" : "";
+        rawText = rawText.slice(0, rawPos) + prefix + e.data + suffix + rawText.slice(rawPos);
+        rerenderInput();
+        restoreCursor(cursor + e.data.length);
+        checkMention();
+      } else if (e.inputType === "deleteContentBackward") {
+        e.preventDefault();
+        _handledInput = true;
+        var cursor = saveCursor();
+        if (cursor > 0) {
+          var rawPos = plainToRaw(cursor, rawText);
+          var prevRawPos = plainToRaw(cursor - 1, rawText);
+          rawText = rawText.slice(0, prevRawPos) + rawText.slice(rawPos);
+          rerenderInput();
+          restoreCursor(cursor - 1);
+          checkMention();
+        }
+      } else if (e.inputType === "deleteContentForward") {
+        e.preventDefault();
+        _handledInput = true;
+        var cursor = saveCursor();
+        var rawPos = plainToRaw(cursor, rawText);
+        var nextRawPos = plainToRaw(cursor + 1, rawText);
+        if (nextRawPos > rawPos) {
+          rawText = rawText.slice(0, rawPos) + rawText.slice(nextRawPos);
+          rerenderInput();
+          restoreCursor(cursor);
+          checkMention();
+        }
+      }
+    });
+
     textInput.addEventListener("input", function () {
+      if (_handledInput) { _handledInput = false; return; }
       rawText = extractRaw(textInput);
       checkMention();
     });
@@ -1038,6 +1107,8 @@
       if (!body) return;
       var replyMsg = replyingTo;
       rawText = "";
+      activeStyle = { bold: false, italic: false, underline: false, strike: false, color: null };
+      updatePaletteActive();
       rerenderInput();
       closeSuggest();
       replyingTo = null;

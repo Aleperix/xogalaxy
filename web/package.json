@@ -11,7 +11,22 @@
     "check": "node --check src/core.js && node --check src/api.js && node --check src/router.js && node --check src/markdown.js && node --check src/chunks/stats.js && node --check src/chunks/chat.js && node --check src/chunks/comments.js && node --check src/chunks/posts.js && node --check src/chunks/engagement.js && node --check src/chunks/auth.js && node --check src/chunks/identity.js && node --check src/chunks/onboarding.js && node --check src/chunks/newsletter.js && node --check src/app.js && node --check build.mjs"
   },
   "devDependencies": {
+    "esbuild": "^0.28.2",
     "happy-dom": "^20.11.1",
     "vitest": "^4.1.0"
+  },
+  "dependencies": {
+    "@tiptap/core": "^3.30.5",
+    "@tiptap/extension-character-count": "^3.30.5",
+    "@tiptap/extension-dropcursor": "^3.30.5",
+    "@tiptap/extension-history": "^3.30.5",
+    "@tiptap/extension-image": "^3.30.5",
+    "@tiptap/extension-link": "^3.30.5",
+    "@tiptap/extension-mention": "^3.30.5",
+    "@tiptap/extension-placeholder": "^3.30.5",
+    "@tiptap/extension-underline": "^3.30.5",
+    "@tiptap/pm": "^3.30.5",
+    "@tiptap/starter-kit": "^3.30.5",
+    "turndown": "^7.2.4"
   }
 }

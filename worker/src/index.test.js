@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { exports } from "cloudflare:workers";
+import { env, exports } from "cloudflare:workers";
 import { reset } from "cloudflare:test";
 
 describe("Worker routes", () => {
@@ -70,6 +70,23 @@ describe("Worker routes", () => {
 
   it("404 for unknown paths", async () => {
     const res = await exports.default.fetch("http://xogalaxy-backend.test/nope");
+    expect(res.status).toBe(404);
+  });
+
+  it("GET /dist/tiptap.js sirve el bundle desde KV con CORS y cache", async () => {
+    await env.XOGALAXY_KV.put("assets:tiptap", "export const createEditor = () => 1;", { expirationTtl: 3600 });
+    const res = await exports.default.fetch("http://xogalaxy-backend.test/dist/tiptap.js", {
+      headers: { Origin: "https://xogalax.blogspot.com" },
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toContain("text/javascript");
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(res.headers.get("Cache-Control")).toContain("max-age");
+    expect(await res.text()).toContain("export const createEditor");
+  });
+
+  it("GET /dist/tiptap.js devuelve 404 sin el asset en KV", async () => {
+    const res = await exports.default.fetch("http://xogalaxy-backend.test/dist/tiptap.js");
     expect(res.status).toBe(404);
   });
 });
